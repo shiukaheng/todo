@@ -59,6 +59,11 @@ class LinkRequest(BaseModel):
     to_id: str
 
 
+class RenameRequest(BaseModel):
+    """Rename request."""
+    new_id: str
+
+
 class OperationResult(BaseModel):
     """Generic operation result."""
     success: bool

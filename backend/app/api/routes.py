@@ -15,6 +15,7 @@ from app.models import (
     EnrichedTaskOut,
     TaskListOut,
     LinkRequest,
+    RenameRequest,
     OperationResult,
 )
 from app.api.sse import publisher
@@ -95,6 +96,36 @@ async def set_task(task_id: str, req: TaskUpdate):
 
     await publisher.broadcast()
     return OperationResult(success=True)
+
+
+@router.delete("/tasks/{task_id}", response_model=OperationResult)
+async def remove_task(task_id: str):
+    """Delete a task and its edges."""
+    with get_session() as session:
+        found = session.execute_write(
+            lambda tx: services.remove_task(tx, task_id)
+        )
+
+    if not found:
+        raise HTTPException(status_code=404, detail=f"Task '{task_id}' not found")
+
+    await publisher.broadcast()
+    return OperationResult(success=True, message=f"Deleted task '{task_id}'")
+
+
+@router.post("/tasks/{task_id}/rename", response_model=OperationResult)
+async def rename_task(task_id: str, req: RenameRequest):
+    """Rename a task (change its ID)."""
+    try:
+        with get_session() as session:
+            session.execute_write(
+                lambda tx: services.rename_task(tx, task_id, req.new_id)
+            )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    await publisher.broadcast()
+    return OperationResult(success=True, message=f"Renamed '{task_id}' to '{req.new_id}'")
 
 
 # ============================================================================

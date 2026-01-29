@@ -197,6 +197,32 @@ def unlink_tasks(tx, from_id: str, to_id: str) -> bool:
     return result.single()["n"] > 0
 
 
+def remove_task(tx, id: str) -> bool:
+    """Remove a task. Returns True if found."""
+    result = tx.run(
+        "MATCH (t:Task {id: $id}) DETACH DELETE t RETURN count(t) AS n",
+        id=id
+    )
+    return result.single()["n"] > 0
+
+
+def rename_task(tx, old_id: str, new_id: str) -> None:
+    """Rename a task. Raises if old not found or new already exists."""
+    if old_id == new_id:
+        raise ValueError("Old and new IDs are the same")
+
+    # Check new ID doesn't exist
+    if tx.run("MATCH (t:Task {id: $id}) RETURN t", id=new_id).single():
+        raise ValueError(f"Task '{new_id}' already exists")
+
+    result = tx.run(
+        "MATCH (t:Task {id: $old_id}) SET t.id = $new_id, t.updated_at = $now RETURN t",
+        old_id=old_id, new_id=new_id, now=int(time.time())
+    )
+    if not result.single():
+        raise ValueError(f"Task '{old_id}' not found")
+
+
 def _create_dependency(tx, from_id: str, to_id: str) -> None:
     """Create a dependency edge, checking for cycles."""
     if would_create_cycle(tx, from_id, to_id):
