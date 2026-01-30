@@ -1,0 +1,11 @@
+{
+  "name": "todo-client",
+  "version": "0.1.0",
+  "description": "TypeScript client for Todo API",
+  "main": "client/index.ts",
+  "types": "client/index.ts",
+  "license": "MIT",
+  "scripts": {
+    "generate": "cd client && ./generate.sh"
+  }
+}
