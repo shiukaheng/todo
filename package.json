@@ -5,6 +5,12 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "license": "MIT",
+  "files": [
+    "dist",
+    "client/generated",
+    "client/index.ts",
+    "client/sse.ts"
+  ],
   "scripts": {
     "generate": "cd client && ./generate.sh",
     "build": "tsc",
