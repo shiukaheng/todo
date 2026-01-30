@@ -5,7 +5,7 @@
  * OpenAPI doesn't spec SSE, so this is manual.
  */
 
-import type { TaskListOut } from './generated';
+import { TaskListOut, TaskListOutFromJSON } from './generated';
 
 export type TaskSubscriber = (data: TaskListOut) => void;
 
@@ -21,7 +21,8 @@ export function subscribeToTasks(
 
   const handler = (e: MessageEvent) => {
     try {
-      onUpdate(JSON.parse(e.data));
+      const raw = JSON.parse(e.data);
+      onUpdate(TaskListOutFromJSON(raw));
     } catch (err) {
       console.error('Failed to parse SSE data:', err);
     }
