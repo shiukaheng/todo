@@ -17,7 +17,7 @@ class SSEPublisher:
         self._subscribers: set[asyncio.Queue] = set()
         self._lock = asyncio.Lock()
 
-    async def subscribe(self) -> AsyncGenerator[str, None]:
+    async def subscribe(self) -> AsyncGenerator[dict, None]:
         """Subscribe to task updates. Yields SSE-formatted events."""
         queue: asyncio.Queue = asyncio.Queue()
 
@@ -27,12 +27,12 @@ class SSEPublisher:
         try:
             # Send initial state
             data = self._get_current_state()
-            yield f"event: init\ndata: {json.dumps(data)}\n\n"
+            yield {"event": "init", "data": json.dumps(data)}
 
             # Wait for updates
             while True:
                 data = await queue.get()
-                yield f"event: update\ndata: {json.dumps(data)}\n\n"
+                yield {"event": "update", "data": json.dumps(data)}
         finally:
             async with self._lock:
                 self._subscribers.discard(queue)
