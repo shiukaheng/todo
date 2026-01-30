@@ -2,10 +2,15 @@
   "name": "todo-client",
   "version": "0.1.0",
   "description": "TypeScript client for Todo API",
-  "main": "client/index.ts",
-  "types": "client/index.ts",
+  "main": "dist/client/index.js",
+  "types": "dist/client/index.d.ts",
   "license": "MIT",
   "scripts": {
-    "generate": "cd client && ./generate.sh"
+    "generate": "cd client && ./generate.sh",
+    "build": "tsc",
+    "prepare": "npm run build"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
   }
 }
