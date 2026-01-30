@@ -7,6 +7,4 @@ dist/
 build/
 node_modules/
 
-# Codegenned client (regenerate with ./generate.sh)
-client/generated/
-client/openapi.json
+

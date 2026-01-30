@@ -10,7 +10,7 @@ echo "Fetching OpenAPI spec from $API_URL..."
 curl -s "$API_URL/openapi.json" > openapi.json
 
 echo "Generating TypeScript client..."
-openapi-generator-cli generate \
+npx @openapitools/openapi-generator-cli generate \
   -i openapi.json \
   -g typescript-fetch \
   -o generated \
