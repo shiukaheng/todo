@@ -39,8 +39,8 @@ class TaskOut(BaseModel):
     calculated_completed: bool | None
     calculated_due: int | None
     deps_clear: bool | None
-    parents: list[str]    # dependency IDs where this task is from_id (this depends on...)
-    children: list[str]   # dependency IDs where this task is to_id (depended on by...)
+    parents: list[str]    # dependency IDs where this task is to_id (high-level goals depending on this)
+    children: list[str]   # dependency IDs where this task is from_id (sub-tasks this depends on)
 
 
 class DependencyOut(BaseModel):

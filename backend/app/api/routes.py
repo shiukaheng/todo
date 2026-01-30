@@ -60,11 +60,14 @@ async def list_tasks():
         tasks, dependencies, has_cycles = session.execute_read(services.list_tasks)
 
     # Build parent/child lookup: task_id -> list of dependency IDs
-    parents_map: dict[str, list[str]] = {}   # from_id -> [dep.id, ...]
-    children_map: dict[str, list[str]] = {}  # to_id -> [dep.id, ...]
+    # Edge: from_id -[DEPENDS_ON]-> to_id means from_id depends on to_id
+    # parents = high-level goals that depend on this task (things this task blocks)
+    # children = sub-tasks this task depends on (things that block this task)
+    parents_map: dict[str, list[str]] = {}   # to_id -> [dep.id, ...] (things that depend on to_id)
+    children_map: dict[str, list[str]] = {}  # from_id -> [dep.id, ...] (things from_id depends on)
     for dep in dependencies:
-        parents_map.setdefault(dep.from_id, []).append(dep.id)
-        children_map.setdefault(dep.to_id, []).append(dep.id)
+        parents_map.setdefault(dep.to_id, []).append(dep.id)
+        children_map.setdefault(dep.from_id, []).append(dep.id)
 
     return TaskListOut(
         tasks={
