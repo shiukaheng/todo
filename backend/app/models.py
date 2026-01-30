@@ -28,7 +28,7 @@ class TaskUpdate(BaseModel):
 
 
 class TaskOut(BaseModel):
-    """Task response."""
+    """Task response with calculated fields."""
     id: str
     text: str
     completed: bool
@@ -36,20 +36,24 @@ class TaskOut(BaseModel):
     due: int | None
     created_at: int | None
     updated_at: int | None
-
-
-class EnrichedTaskOut(BaseModel):
-    """Enriched task response with computed properties."""
-    task: TaskOut
-    direct_deps: list[str]
     calculated_completed: bool | None
     calculated_due: int | None
     deps_clear: bool | None
+    parents: list[str]    # dependency IDs where this task is from_id (this depends on...)
+    children: list[str]   # dependency IDs where this task is to_id (depended on by...)
+
+
+class DependencyOut(BaseModel):
+    """Dependency relationship."""
+    id: str
+    from_id: str
+    to_id: str
 
 
 class TaskListOut(BaseModel):
     """Task list response."""
-    tasks: list[EnrichedTaskOut]
+    tasks: dict[str, TaskOut]
+    dependencies: dict[str, DependencyOut]
     has_cycles: bool
 
 

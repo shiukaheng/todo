@@ -13,13 +13,20 @@
  */
 
 import { mapValues } from '../runtime';
-import type { EnrichedTaskOut } from './EnrichedTaskOut';
+import type { DependencyOut } from './DependencyOut';
 import {
-    EnrichedTaskOutFromJSON,
-    EnrichedTaskOutFromJSONTyped,
-    EnrichedTaskOutToJSON,
-    EnrichedTaskOutToJSONTyped,
-} from './EnrichedTaskOut';
+    DependencyOutFromJSON,
+    DependencyOutFromJSONTyped,
+    DependencyOutToJSON,
+    DependencyOutToJSONTyped,
+} from './DependencyOut';
+import type { TaskOut } from './TaskOut';
+import {
+    TaskOutFromJSON,
+    TaskOutFromJSONTyped,
+    TaskOutToJSON,
+    TaskOutToJSONTyped,
+} from './TaskOut';
 
 /**
  * Task list response.
@@ -29,10 +36,16 @@ import {
 export interface TaskListOut {
     /**
      * 
-     * @type {Array<EnrichedTaskOut>}
+     * @type {{ [key: string]: TaskOut; }}
      * @memberof TaskListOut
      */
-    tasks: Array<EnrichedTaskOut>;
+    tasks: { [key: string]: TaskOut; };
+    /**
+     * 
+     * @type {{ [key: string]: DependencyOut; }}
+     * @memberof TaskListOut
+     */
+    dependencies: { [key: string]: DependencyOut; };
     /**
      * 
      * @type {boolean}
@@ -46,6 +59,7 @@ export interface TaskListOut {
  */
 export function instanceOfTaskListOut(value: object): value is TaskListOut {
     if (!('tasks' in value) || value['tasks'] === undefined) return false;
+    if (!('dependencies' in value) || value['dependencies'] === undefined) return false;
     if (!('hasCycles' in value) || value['hasCycles'] === undefined) return false;
     return true;
 }
@@ -60,7 +74,8 @@ export function TaskListOutFromJSONTyped(json: any, ignoreDiscriminator: boolean
     }
     return {
         
-        'tasks': ((json['tasks'] as Array<any>).map(EnrichedTaskOutFromJSON)),
+        'tasks': (mapValues(json['tasks'], TaskOutFromJSON)),
+        'dependencies': (mapValues(json['dependencies'], DependencyOutFromJSON)),
         'hasCycles': json['has_cycles'],
     };
 }
@@ -76,7 +91,8 @@ export function TaskListOutToJSONTyped(value?: TaskListOut | null, ignoreDiscrim
 
     return {
         
-        'tasks': ((value['tasks'] as Array<any>).map(EnrichedTaskOutToJSON)),
+        'tasks': (mapValues(value['tasks'], TaskOutToJSON)),
+        'dependencies': (mapValues(value['dependencies'], DependencyOutToJSON)),
         'has_cycles': value['hasCycles'],
     };
 }

@@ -12,8 +12,8 @@ from app.models import (
     TaskCreate,
     TaskUpdate,
     TaskOut,
-    EnrichedTaskOut,
     TaskListOut,
+    DependencyOut,
     LinkRequest,
     RenameRequest,
     OperationResult,
@@ -23,14 +23,28 @@ from app.api.sse import publisher
 router = APIRouter()
 
 
-def _enriched_to_out(et: services.EnrichedTask) -> EnrichedTaskOut:
+def _enriched_to_out(et: services.EnrichedTask) -> TaskOut:
     """Convert EnrichedTask to Pydantic model."""
-    return EnrichedTaskOut(
-        task=TaskOut(**asdict(et.task)),
-        direct_deps=et.direct_deps,
+    return TaskOut(
+        id=et.task.id,
+        text=et.task.text,
+        completed=et.task.completed,
+        inferred=et.task.inferred,
+        due=et.task.due,
+        created_at=et.task.created_at,
+        updated_at=et.task.updated_at,
         calculated_completed=et.calculated_completed,
         calculated_due=et.calculated_due,
         deps_clear=et.deps_clear,
+    )
+
+
+def _dep_to_out(dep: services.Dependency) -> DependencyOut:
+    """Convert Dependency to Pydantic model."""
+    return DependencyOut(
+        id=dep.id,
+        from_id=dep.from_id,
+        to_id=dep.to_id,
     )
 
 
@@ -43,9 +57,34 @@ def _enriched_to_out(et: services.EnrichedTask) -> EnrichedTaskOut:
 async def list_tasks():
     """List all tasks with computed properties."""
     with get_session() as session:
-        tasks, has_cycles = session.execute_read(services.list_tasks)
+        tasks, dependencies, has_cycles = session.execute_read(services.list_tasks)
+
+    # Build parent/child lookup: task_id -> list of dependency IDs
+    parents_map: dict[str, list[str]] = {}   # from_id -> [dep.id, ...]
+    children_map: dict[str, list[str]] = {}  # to_id -> [dep.id, ...]
+    for dep in dependencies:
+        parents_map.setdefault(dep.from_id, []).append(dep.id)
+        children_map.setdefault(dep.to_id, []).append(dep.id)
+
     return TaskListOut(
-        tasks=[_enriched_to_out(t) for t in tasks],
+        tasks={
+            t.task.id: TaskOut(
+                id=t.task.id,
+                text=t.task.text,
+                completed=t.task.completed,
+                inferred=t.task.inferred,
+                due=t.task.due,
+                created_at=t.task.created_at,
+                updated_at=t.task.updated_at,
+                calculated_completed=t.calculated_completed,
+                calculated_due=t.calculated_due,
+                deps_clear=t.deps_clear,
+                parents=parents_map.get(t.task.id, []),
+                children=children_map.get(t.task.id, []),
+            )
+            for t in tasks
+        },
+        dependencies={d.id: _dep_to_out(d) for d in dependencies},
         has_cycles=has_cycles,
     )
 
@@ -73,7 +112,20 @@ async def add_task(req: TaskCreate):
         raise HTTPException(status_code=400, detail=str(e))
 
     await publisher.broadcast()
-    return TaskOut(**asdict(task))
+    return TaskOut(
+        id=task.id,
+        text=task.text,
+        completed=task.completed,
+        inferred=task.inferred,
+        due=task.due,
+        created_at=task.created_at,
+        updated_at=task.updated_at,
+        calculated_completed=None,
+        calculated_due=None,
+        deps_clear=None,
+        parents=[],   # caller should re-fetch if depends/blocks were provided
+        children=[],
+    )
 
 
 @router.patch("/tasks/{task_id}", response_model=OperationResult)
@@ -133,19 +185,19 @@ async def rename_task(task_id: str, req: RenameRequest):
 # ============================================================================
 
 
-@router.post("/links", response_model=OperationResult)
+@router.post("/links", response_model=DependencyOut)
 async def link_tasks(req: LinkRequest):
     """Create a dependency: from_id depends on to_id."""
     try:
         with get_session() as session:
-            session.execute_write(
+            dep_id = session.execute_write(
                 lambda tx: services.link_tasks(tx, req.from_id, req.to_id)
             )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
     await publisher.broadcast()
-    return OperationResult(success=True, message=f"{req.from_id} now depends on {req.to_id}")
+    return DependencyOut(id=dep_id, from_id=req.from_id, to_id=req.to_id)
 
 
 @router.delete("/links", response_model=OperationResult)
@@ -181,8 +233,11 @@ async def subscribe_tasks():
 
 @router.post("/init", response_model=OperationResult)
 async def init_db():
-    """Initialize the database schema."""
+    """Initialize the database schema and run migrations."""
     with get_session() as session:
         session.execute_write(services.init_db)
+    with get_session() as session:
         session.execute_write(services.prime_tokens)
+    with get_session() as session:
+        session.execute_write(services.migrate_dependency_ids)
     return OperationResult(success=True, message="Database initialized")

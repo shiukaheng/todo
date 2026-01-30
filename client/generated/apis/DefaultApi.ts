@@ -15,6 +15,7 @@
 
 import * as runtime from '../runtime';
 import type {
+  DependencyOut,
   HTTPValidationError,
   LinkRequest,
   OperationResult,
@@ -25,6 +26,8 @@ import type {
   TaskUpdate,
 } from '../models/index';
 import {
+    DependencyOutFromJSON,
+    DependencyOutToJSON,
     HTTPValidationErrorFromJSON,
     HTTPValidationErrorToJSON,
     LinkRequestFromJSON,
@@ -151,7 +154,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Initialize the database schema.
+     * Initialize the database schema and run migrations.
      * Init Db
      */
     async initDbApiInitPostRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<OperationResult>> {
@@ -173,7 +176,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Initialize the database schema.
+     * Initialize the database schema and run migrations.
      * Init Db
      */
     async initDbApiInitPost(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<OperationResult> {
@@ -185,7 +188,7 @@ export class DefaultApi extends runtime.BaseAPI {
      * Create a dependency: from_id depends on to_id.
      * Link Tasks
      */
-    async linkTasksApiLinksPostRaw(requestParameters: LinkTasksApiLinksPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<OperationResult>> {
+    async linkTasksApiLinksPostRaw(requestParameters: LinkTasksApiLinksPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<DependencyOut>> {
         if (requestParameters['linkRequest'] == null) {
             throw new runtime.RequiredError(
                 'linkRequest',
@@ -210,14 +213,14 @@ export class DefaultApi extends runtime.BaseAPI {
             body: LinkRequestToJSON(requestParameters['linkRequest']),
         }, initOverrides);
 
-        return new runtime.JSONApiResponse(response, (jsonValue) => OperationResultFromJSON(jsonValue));
+        return new runtime.JSONApiResponse(response, (jsonValue) => DependencyOutFromJSON(jsonValue));
     }
 
     /**
      * Create a dependency: from_id depends on to_id.
      * Link Tasks
      */
-    async linkTasksApiLinksPost(requestParameters: LinkTasksApiLinksPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<OperationResult> {
+    async linkTasksApiLinksPost(requestParameters: LinkTasksApiLinksPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DependencyOut> {
         const response = await this.linkTasksApiLinksPostRaw(requestParameters, initOverrides);
         return await response.value();
     }

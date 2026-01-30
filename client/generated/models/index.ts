@@ -1,6 +1,6 @@
 /* tslint:disable */
 /* eslint-disable */
-export * from './EnrichedTaskOut';
+export * from './DependencyOut';
 export * from './HTTPValidationError';
 export * from './LinkRequest';
 export * from './LocationInner';

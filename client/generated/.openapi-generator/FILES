@@ -1,8 +1,7 @@
-.openapi-generator-ignore
 apis/DefaultApi.ts
 apis/index.ts
 docs/DefaultApi.md
-docs/EnrichedTaskOut.md
+docs/DependencyOut.md
 docs/HTTPValidationError.md
 docs/LinkRequest.md
 docs/LocationInner.md
@@ -14,7 +13,7 @@ docs/TaskOut.md
 docs/TaskUpdate.md
 docs/ValidationError.md
 index.ts
-models/EnrichedTaskOut.ts
+models/DependencyOut.ts
 models/HTTPValidationError.ts
 models/LinkRequest.ts
 models/LocationInner.ts

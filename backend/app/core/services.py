@@ -2,9 +2,11 @@
 from __future__ import annotations
 
 import time
+import uuid
 from dataclasses import dataclass, field
 
-from app.core.utils import parse_due, would_create_cycle
+
+from app.core.utils import parse_due
 
 
 @dataclass
@@ -21,28 +23,31 @@ class Task:
 
 @dataclass
 class EnrichedTask:
-    """Task with calculated properties and dependencies."""
+    """Task with calculated properties."""
     task: Task
-    direct_deps: list[str] = field(default_factory=list)
     calculated_completed: bool | None = None
     calculated_due: int | None = None
     deps_clear: bool | None = None
 
 
+@dataclass
+class Dependency:
+    """Dependency relationship."""
+    id: str
+    from_id: str
+    to_id: str
+
+
 _ENRICHMENT = """
-    OPTIONAL MATCH (t)-[:DEPENDS_ON]->(dep:Task)
-    WHERE NOT EXISTS { MATCH (t)-[:DEPENDS_ON*2..]->(dep) }
+    OPTIONAL MATCH (t)-[:DEPENDS_ON]->(anyDep:Task)
     OPTIONAL MATCH (t)<-[:DEPENDS_ON*]-(downstream:Task)
     WHERE downstream <> t
-    OPTIONAL MATCH (t)-[:DEPENDS_ON]->(anyDep:Task)
     WITH t,
-         collect(DISTINCT dep.id) AS direct_deps,
          collect(DISTINCT anyDep) AS all_deps,
          [x IN collect(DISTINCT downstream.due) WHERE x IS NOT NULL] +
            (CASE WHEN t.due IS NULL THEN [] ELSE [t.due] END) AS dues
     RETURN t,
-           direct_deps,
-           t.completed AND (size(all_deps) = 0 OR all(d IN all_deps WHERE d.completed = true))
+           (t.inferred OR t.completed) AND (size(all_deps) = 0 OR all(d IN all_deps WHERE d.completed = true))
              AS calculated_completed,
            CASE WHEN size(dues) = 0 THEN NULL
                 ELSE reduce(d = head(dues), x IN dues | CASE WHEN x < d THEN x ELSE d END)
@@ -70,7 +75,6 @@ def _record_to_enriched(record, skip_calculated: bool = False) -> EnrichedTask:
     """Convert query record to EnrichedTask."""
     return EnrichedTask(
         task=_node_to_task(record["t"]),
-        direct_deps=record.get("direct_deps", []),
         calculated_completed=None if skip_calculated else record.get("calculated_completed"),
         calculated_due=None if skip_calculated else record.get("calculated_due"),
         deps_clear=None if skip_calculated else record.get("deps_clear"),
@@ -99,16 +103,78 @@ def has_cycles(tx) -> bool:
     return result.single() is not None
 
 
-def list_tasks(tx) -> tuple[list[EnrichedTask], bool]:
+# Reusable finalization suffix. Expects `_passthrough` variable to exist.
+# Returns: _passthrough (preserved), _reduced (count), _errors (list)
+_FINALIZE_SUFFIX = """
+// Transitive reduction: remove edges implied by longer paths
+CALL {
+    MATCH (a:Task)-[direct:DEPENDS_ON]->(c:Task)
+    WHERE EXISTS { MATCH (a)-[:DEPENDS_ON*2..]->(c) }
+    DELETE direct
+    RETURN count(direct) AS cnt
+}
+WITH _passthrough, cnt AS _reduced
+
+// Collect validation errors
+CALL {
+    OPTIONAL MATCH (t:Task) WHERE (t)-[:DEPENDS_ON*1..]->(t)
+    WITH t LIMIT 1
+    RETURN CASE WHEN t IS NOT NULL THEN 'Cycle involving: ' + t.id ELSE NULL END AS err
+    UNION ALL
+    OPTIONAL MATCH (t:Task)-[:DEPENDS_ON]->(t)
+    WITH t LIMIT 1
+    RETURN CASE WHEN t IS NOT NULL THEN 'Self-loop: ' + t.id ELSE NULL END AS err
+    UNION ALL
+    OPTIONAL MATCH (a:Task)-[r:DEPENDS_ON]->(b:Task)
+    WITH a.id AS from_id, b.id AS to_id, count(r) AS cnt
+    WHERE cnt > 1
+    WITH from_id, to_id, cnt LIMIT 1
+    RETURN CASE WHEN cnt > 1 THEN 'Duplicate edges: ' + from_id + ' -> ' + to_id ELSE NULL END AS err
+    UNION ALL
+    OPTIONAL MATCH (a:Task)-[r:DEPENDS_ON]->(b:Task)
+    WHERE r.id IS NULL
+    WITH a, b LIMIT 1
+    RETURN CASE WHEN a IS NOT NULL THEN 'Missing ID: ' + a.id + ' -> ' + b.id ELSE NULL END AS err
+}
+WITH _passthrough, _reduced, collect(err) AS _errs
+WITH _passthrough, _reduced, [e IN _errs WHERE e IS NOT NULL] AS _errors
+"""
+
+
+def _check_finalize_errors(record) -> None:
+    """Check finalize result for errors and raise if any."""
+    errors = record["_errors"]
+    if errors:
+        raise ValueError("; ".join(errors))
+
+
+def list_dependencies(tx) -> list[Dependency]:
+    """List all dependencies."""
+    result = tx.run(
+        "MATCH (a:Task)-[r:DEPENDS_ON]->(b:Task) "
+        "RETURN r.id AS id, a.id AS from_id, b.id AS to_id"
+    )
+    return [
+        Dependency(
+            id=record["id"] or "unknown",
+            from_id=record["from_id"],
+            to_id=record["to_id"],
+        )
+        for record in result
+    ]
+
+
+def list_tasks(tx) -> tuple[list[EnrichedTask], list[Dependency], bool]:
     """List all tasks with computed properties.
 
-    Returns (tasks, has_cycles).
+    Returns (tasks, dependencies, has_cycles).
     """
     graph_has_cycles = has_cycles(tx)
     result = tx.run("MATCH (t:Task)" + _ENRICHMENT)
     records = _sort_by_updated(list(result))
     tasks = [_record_to_enriched(r, skip_calculated=graph_has_cycles) for r in records]
-    return tasks, graph_has_cycles
+    dependencies = list_dependencies(tx)
+    return tasks, dependencies, graph_has_cycles
 
 
 # ============================================================================
@@ -182,9 +248,9 @@ def update_task(
     return result.single() is not None
 
 
-def link_tasks(tx, from_id: str, to_id: str) -> None:
-    """Create dependency: from_id depends on to_id."""
-    _create_dependency(tx, from_id, to_id)
+def link_tasks(tx, from_id: str, to_id: str) -> str:
+    """Create dependency: from_id depends on to_id. Returns the dependency ID."""
+    return _create_dependency(tx, from_id, to_id)
 
 
 def unlink_tasks(tx, from_id: str, to_id: str) -> bool:
@@ -223,17 +289,31 @@ def rename_task(tx, old_id: str, new_id: str) -> None:
         raise ValueError(f"Task '{old_id}' not found")
 
 
-def _create_dependency(tx, from_id: str, to_id: str) -> None:
-    """Create a dependency edge, checking for cycles."""
-    if would_create_cycle(tx, from_id, to_id):
-        raise ValueError(f"Would create cycle: {from_id} -> {to_id}")
+_CREATE_DEPENDENCY_QUERY = (
+    "MATCH (a:Task {id: $from_id}), (b:Task {id: $to_id}) "
+    "MERGE (a)-[r:DEPENDS_ON]->(b) "
+    "ON CREATE SET r.id = $dep_id "
+    "WITH {dep_id: r.id, found: true} AS _passthrough "
+    + _FINALIZE_SUFFIX +
+    "RETURN _passthrough.dep_id AS dep_id, _passthrough.found AS found, _reduced, _errors"
+)
+
+
+def _create_dependency(tx, from_id: str, to_id: str) -> str:
+    """Create a dependency edge with finalization. Returns the dependency ID."""
+    if from_id == to_id:
+        raise ValueError(f"Self-loop not allowed: {from_id}")
+
+    dep_id = str(uuid.uuid4())
     result = tx.run(
-        "MATCH (a:Task {id: $from_id}), (b:Task {id: $to_id}) "
-        "MERGE (a)-[:DEPENDS_ON]->(b) RETURN b",
-        from_id=from_id, to_id=to_id
+        _CREATE_DEPENDENCY_QUERY,
+        from_id=from_id, to_id=to_id, dep_id=dep_id
     )
-    if not result.single():
+    record = result.single()
+    if not record or not record["found"]:
         raise ValueError(f"Task not found: {from_id} or {to_id}")
+    _check_finalize_errors(record)
+    return record["dep_id"]
 
 
 # ============================================================================
@@ -249,10 +329,19 @@ def init_db(tx) -> None:
     )
 
 
+def migrate_dependency_ids(tx) -> None:
+    """Assign UUIDs to any relationships missing an ID."""
+    tx.run(
+        "MATCH (a:Task)-[r:DEPENDS_ON]->(b:Task) "
+        "WHERE r.id IS NULL "
+        "SET r.id = randomUUID()"
+    )
+
+
 def prime_tokens(tx) -> None:
     """Create and delete a dummy node to register property keys."""
     tx.run(
         "CREATE (t:__InitTokenRegistration:Task {id: '__init__', due: 0, completed: false, inferred: false, created_at: 0, updated_at: 0, text: ''}) "
-        "CREATE (t)-[:DEPENDS_ON]->(t) "
+        "CREATE (t)-[:DEPENDS_ON {id: '__init__'}]->(t) "
         "DETACH DELETE t"
     )

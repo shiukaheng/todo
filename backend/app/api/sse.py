@@ -52,21 +52,43 @@ class SSEPublisher:
                     pass  # Skip slow clients
 
     def _get_current_state(self) -> dict:
-        """Get current task list state."""
+        """Get current task list state matching TaskListOut schema."""
         with get_session() as session:
-            tasks, has_cycles = session.execute_read(services.list_tasks)
+            tasks, dependencies, has_cycles = session.execute_read(services.list_tasks)
+
+        # Build parent/child lookup: task_id -> list of dependency IDs
+        parents_map: dict[str, list[str]] = {}   # from_id -> [dep.id, ...]
+        children_map: dict[str, list[str]] = {}  # to_id -> [dep.id, ...]
+        for dep in dependencies:
+            parents_map.setdefault(dep.from_id, []).append(dep.id)
+            children_map.setdefault(dep.to_id, []).append(dep.id)
 
         return {
-            "tasks": [
-                {
-                    "task": asdict(et.task),
-                    "direct_deps": et.direct_deps,
+            "tasks": {
+                et.task.id: {
+                    "id": et.task.id,
+                    "text": et.task.text,
+                    "completed": et.task.completed,
+                    "inferred": et.task.inferred,
+                    "due": et.task.due,
+                    "created_at": et.task.created_at,
+                    "updated_at": et.task.updated_at,
                     "calculated_completed": et.calculated_completed,
                     "calculated_due": et.calculated_due,
                     "deps_clear": et.deps_clear,
+                    "parents": parents_map.get(et.task.id, []),
+                    "children": children_map.get(et.task.id, []),
                 }
                 for et in tasks
-            ],
+            },
+            "dependencies": {
+                dep.id: {
+                    "id": dep.id,
+                    "from_id": dep.from_id,
+                    "to_id": dep.to_id,
+                }
+                for dep in dependencies
+            },
             "has_cycles": has_cycles,
         }
 

@@ -150,7 +150,7 @@ No authorization required
 
 Init Db
 
-Initialize the database schema.
+Initialize the database schema and run migrations.
 
 ### Example
 
@@ -205,7 +205,7 @@ No authorization required
 
 ## linkTasksApiLinksPost
 
-> OperationResult linkTasksApiLinksPost(linkRequest)
+> DependencyOut linkTasksApiLinksPost(linkRequest)
 
 Link Tasks
 
@@ -250,7 +250,7 @@ example().catch(console.error);
 
 ### Return type
 
-[**OperationResult**](OperationResult.md)
+[**DependencyOut**](DependencyOut.md)
 
 ### Authorization
 

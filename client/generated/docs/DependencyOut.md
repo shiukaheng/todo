@@ -1,27 +1,27 @@
 
-# TaskListOut
+# DependencyOut
 
-Task list response.
+Dependency relationship.
 
 ## Properties
 
 Name | Type
 ------------ | -------------
-`tasks` | [{ [key: string]: TaskOut; }](TaskOut.md)
-`dependencies` | [{ [key: string]: DependencyOut; }](DependencyOut.md)
-`hasCycles` | boolean
+`id` | string
+`fromId` | string
+`toId` | string
 
 ## Example
 
 ```typescript
-import type { TaskListOut } from ''
+import type { DependencyOut } from ''
 
 // TODO: Update the object below with actual values
 const example = {
-  "tasks": null,
-  "dependencies": null,
-  "hasCycles": null,
-} satisfies TaskListOut
+  "id": null,
+  "fromId": null,
+  "toId": null,
+} satisfies DependencyOut
 
 console.log(example)
 
@@ -30,7 +30,7 @@ const exampleJSON: string = JSON.stringify(example)
 console.log(exampleJSON)
 
 // Parse the JSON string back to an object
-const exampleParsed = JSON.parse(exampleJSON) as TaskListOut
+const exampleParsed = JSON.parse(exampleJSON) as DependencyOut
 console.log(exampleParsed)
 ```
 

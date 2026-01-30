@@ -1,7 +1,7 @@
 
 # TaskOut
 
-Task response.
+Task response with calculated fields.
 
 ## Properties
 
@@ -14,6 +14,11 @@ Name | Type
 `due` | number
 `createdAt` | number
 `updatedAt` | number
+`calculatedCompleted` | boolean
+`calculatedDue` | number
+`depsClear` | boolean
+`parents` | Array&lt;string&gt;
+`children` | Array&lt;string&gt;
 
 ## Example
 
@@ -29,6 +34,11 @@ const example = {
   "due": null,
   "createdAt": null,
   "updatedAt": null,
+  "calculatedCompleted": null,
+  "calculatedDue": null,
+  "depsClear": null,
+  "parents": null,
+  "children": null,
 } satisfies TaskOut
 
 console.log(example)

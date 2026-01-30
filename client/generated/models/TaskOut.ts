@@ -14,7 +14,7 @@
 
 import { mapValues } from '../runtime';
 /**
- * Task response.
+ * Task response with calculated fields.
  * @export
  * @interface TaskOut
  */
@@ -61,6 +61,36 @@ export interface TaskOut {
      * @memberof TaskOut
      */
     updatedAt: number | null;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof TaskOut
+     */
+    calculatedCompleted: boolean | null;
+    /**
+     * 
+     * @type {number}
+     * @memberof TaskOut
+     */
+    calculatedDue: number | null;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof TaskOut
+     */
+    depsClear: boolean | null;
+    /**
+     * 
+     * @type {Array<string>}
+     * @memberof TaskOut
+     */
+    parents: Array<string>;
+    /**
+     * 
+     * @type {Array<string>}
+     * @memberof TaskOut
+     */
+    children: Array<string>;
 }
 
 /**
@@ -74,6 +104,11 @@ export function instanceOfTaskOut(value: object): value is TaskOut {
     if (!('due' in value) || value['due'] === undefined) return false;
     if (!('createdAt' in value) || value['createdAt'] === undefined) return false;
     if (!('updatedAt' in value) || value['updatedAt'] === undefined) return false;
+    if (!('calculatedCompleted' in value) || value['calculatedCompleted'] === undefined) return false;
+    if (!('calculatedDue' in value) || value['calculatedDue'] === undefined) return false;
+    if (!('depsClear' in value) || value['depsClear'] === undefined) return false;
+    if (!('parents' in value) || value['parents'] === undefined) return false;
+    if (!('children' in value) || value['children'] === undefined) return false;
     return true;
 }
 
@@ -94,6 +129,11 @@ export function TaskOutFromJSONTyped(json: any, ignoreDiscriminator: boolean): T
         'due': json['due'],
         'createdAt': json['created_at'],
         'updatedAt': json['updated_at'],
+        'calculatedCompleted': json['calculated_completed'],
+        'calculatedDue': json['calculated_due'],
+        'depsClear': json['deps_clear'],
+        'parents': json['parents'],
+        'children': json['children'],
     };
 }
 
@@ -115,6 +155,11 @@ export function TaskOutToJSONTyped(value?: TaskOut | null, ignoreDiscriminator: 
         'due': value['due'],
         'created_at': value['createdAt'],
         'updated_at': value['updatedAt'],
+        'calculated_completed': value['calculatedCompleted'],
+        'calculated_due': value['calculatedDue'],
+        'deps_clear': value['depsClear'],
+        'parents': value['parents'],
+        'children': value['children'],
     };
 }
 
