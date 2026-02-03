@@ -92,6 +92,38 @@ async def list_tasks():
     )
 
 
+@router.get("/tasks/{task_id}", response_model=TaskOut)
+async def get_task(task_id: str):
+    """Get a single task with computed properties."""
+    with get_session() as session:
+        task = session.execute_read(
+            lambda tx: services.get_task(tx, task_id)
+        )
+        if not task:
+            raise HTTPException(status_code=404, detail=f"Task '{task_id}' not found")
+        # Get dependencies to build parents/children
+        dependencies = session.execute_read(services.list_dependencies)
+
+    # Build parent/child lists for this task
+    parents = [d.id for d in dependencies if d.to_id == task_id]
+    children = [d.id for d in dependencies if d.from_id == task_id]
+
+    return TaskOut(
+        id=task.task.id,
+        text=task.task.text,
+        completed=task.task.completed,
+        inferred=task.task.inferred,
+        due=task.task.due,
+        created_at=task.task.created_at,
+        updated_at=task.task.updated_at,
+        calculated_completed=task.calculated_completed,
+        calculated_due=task.calculated_due,
+        deps_clear=task.deps_clear,
+        parents=parents,
+        children=children,
+    )
+
+
 @router.post("/tasks", response_model=TaskOut)
 async def add_task(req: TaskCreate):
     """Create a new task."""

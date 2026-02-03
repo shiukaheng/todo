@@ -163,6 +163,18 @@ def list_dependencies(tx) -> list[Dependency]:
     ]
 
 
+def get_task(tx, id: str) -> EnrichedTask | None:
+    """Get a single task with computed properties."""
+    result = tx.run(
+        "MATCH (t:Task {id: $id})" + _ENRICHMENT,
+        id=id
+    )
+    record = result.single()
+    if not record:
+        return None
+    return _record_to_enriched(record)
+
+
 def list_tasks(tx) -> tuple[list[EnrichedTask], list[Dependency], bool]:
     """List all tasks with computed properties.
 

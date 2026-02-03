@@ -50,6 +50,10 @@ export interface AddTaskApiTasksPostRequest {
     taskCreate: TaskCreate;
 }
 
+export interface GetTaskApiTasksTaskIdGetRequest {
+    taskId: string;
+}
+
 export interface LinkTasksApiLinksPostRequest {
     linkRequest: LinkRequest;
 }
@@ -115,6 +119,45 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async addTaskApiTasksPost(requestParameters: AddTaskApiTasksPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<TaskOut> {
         const response = await this.addTaskApiTasksPostRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Get a single task with computed properties.
+     * Get Task
+     */
+    async getTaskApiTasksTaskIdGetRaw(requestParameters: GetTaskApiTasksTaskIdGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<TaskOut>> {
+        if (requestParameters['taskId'] == null) {
+            throw new runtime.RequiredError(
+                'taskId',
+                'Required parameter "taskId" was null or undefined when calling getTaskApiTasksTaskIdGet().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/tasks/{task_id}`;
+        urlPath = urlPath.replace(`{${"task_id"}}`, encodeURIComponent(String(requestParameters['taskId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => TaskOutFromJSON(jsonValue));
+    }
+
+    /**
+     * Get a single task with computed properties.
+     * Get Task
+     */
+    async getTaskApiTasksTaskIdGet(requestParameters: GetTaskApiTasksTaskIdGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<TaskOut> {
+        const response = await this.getTaskApiTasksTaskIdGetRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

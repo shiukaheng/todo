@@ -5,6 +5,7 @@ All URIs are relative to *http://localhost*
 | Method | HTTP request | Description |
 |------------- | ------------- | -------------|
 | [**addTaskApiTasksPost**](DefaultApi.md#addtaskapitaskspost) | **POST** /api/tasks | Add Task |
+| [**getTaskApiTasksTaskIdGet**](DefaultApi.md#gettaskapitaskstaskidget) | **GET** /api/tasks/{task_id} | Get Task |
 | [**healthHealthGet**](DefaultApi.md#healthhealthget) | **GET** /health | Health |
 | [**initDbApiInitPost**](DefaultApi.md#initdbapiinitpost) | **POST** /api/init | Init Db |
 | [**linkTasksApiLinksPost**](DefaultApi.md#linktasksapilinkspost) | **POST** /api/links | Link Tasks |
@@ -73,6 +74,74 @@ No authorization required
 ### HTTP request headers
 
 - **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | Successful Response |  -  |
+| **422** | Validation Error |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## getTaskApiTasksTaskIdGet
+
+> TaskOut getTaskApiTasksTaskIdGet(taskId)
+
+Get Task
+
+Get a single task with computed properties.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { GetTaskApiTasksTaskIdGetRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    taskId: taskId_example,
+  } satisfies GetTaskApiTasksTaskIdGetRequest;
+
+  try {
+    const data = await api.getTaskApiTasksTaskIdGet(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **taskId** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**TaskOut**](TaskOut.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
 - **Accept**: `application/json`
 
 
