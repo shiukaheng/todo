@@ -39,10 +39,10 @@ export interface TaskUpdate {
     inferred?: boolean | null;
     /**
      * 
-     * @type {string}
+     * @type {number}
      * @memberof TaskUpdate
      */
-    due?: string | null;
+    due?: number | null;
 }
 
 /**

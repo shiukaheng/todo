@@ -9,7 +9,7 @@ class TaskBase(BaseModel):
     text: str | None = None
     completed: bool = False
     inferred: bool = False
-    due: str | None = None
+    due: int | None = None
 
 
 class TaskCreate(TaskBase):
@@ -24,7 +24,7 @@ class TaskUpdate(BaseModel):
     text: str | None = None
     completed: bool | None = None
     inferred: bool | None = None
-    due: str | None = None
+    due: int | None = None
 
 
 class TaskOut(BaseModel):

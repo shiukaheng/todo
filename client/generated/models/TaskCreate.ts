@@ -39,10 +39,10 @@ export interface TaskCreate {
     inferred?: boolean;
     /**
      * 
-     * @type {string}
+     * @type {number}
      * @memberof TaskCreate
      */
-    due?: string | null;
+    due?: number | null;
     /**
      * 
      * @type {string}

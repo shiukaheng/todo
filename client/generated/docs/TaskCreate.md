@@ -10,7 +10,7 @@ Name | Type
 `text` | string
 `completed` | boolean
 `inferred` | boolean
-`due` | string
+`due` | number
 `id` | string
 `depends` | Array&lt;string&gt;
 `blocks` | Array&lt;string&gt;

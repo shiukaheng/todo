@@ -6,7 +6,6 @@ import uuid
 from dataclasses import dataclass, field
 
 
-from app.core.utils import parse_due
 
 
 @dataclass
@@ -204,7 +203,7 @@ def add_task(
     if text is not None:
         props["text"] = text
     if due is not None:
-        props["due"] = parse_due(due)
+        props["due"] = due
 
     tx.run("CREATE (t:Task $props)", props=props)
 
@@ -233,7 +232,7 @@ def update_task(
     if inferred is not None:
         props["inferred"] = inferred
     if due is not None:
-        props["due"] = parse_due(due)
+        props["due"] = due
 
     if not props:
         # Check if task exists

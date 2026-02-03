@@ -10,8 +10,6 @@ dependencies = [
     "python-dotenv>=1.0",
     "pydantic>=2.10",
     "sse-starlette>=2.2",
-    "dateparser>=1.2",
-    "parsedatetime>=2.6",
 ]
 
 [project.optional-dependencies]
