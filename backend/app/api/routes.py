@@ -49,6 +49,17 @@ def _dep_to_out(dep: services.Dependency) -> DependencyOut:
 
 
 # ============================================================================
+# SSE Subscription (must be before /tasks/{task_id} to avoid path conflict)
+# ============================================================================
+
+
+@router.get("/tasks/subscribe")
+async def subscribe_tasks():
+    """Subscribe to real-time task updates via SSE."""
+    return EventSourceResponse(publisher.subscribe())
+
+
+# ============================================================================
 # Task CRUD
 # ============================================================================
 
@@ -248,17 +259,6 @@ async def unlink_tasks(req: LinkRequest):
 
     await publisher.broadcast()
     return OperationResult(success=True, message=f"Removed dependency {req.from_id} -> {req.to_id}")
-
-
-# ============================================================================
-# SSE Subscription
-# ============================================================================
-
-
-@router.get("/tasks/subscribe")
-async def subscribe_tasks():
-    """Subscribe to real-time task updates via SSE."""
-    return EventSourceResponse(publisher.subscribe())
 
 
 # ============================================================================
