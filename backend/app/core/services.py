@@ -326,7 +326,7 @@ def update_node(
 
         if current_type != node_type:
             # Change node type
-            tx.run(
+            query = (
                 f"MATCH (n:{current_type} {{id: $id}}) "
                 f"REMOVE n:{current_type} "
                 f"SET n:{node_type}, n.updated_at = $now "
@@ -334,9 +334,11 @@ def update_node(
                 + (f"SET n.completed = {str(completed if completed is not None else False).lower()} "
                    if node_type == "Task" and current_type != "Task" else "")
                 # Remove completed if converting FROM Task
-                + ("REMOVE n.completed " if current_type == "Task" and node_type != "Task" else ""),
-                id=id, now=now
+                + ("REMOVE n.completed " if current_type == "Task" and node_type != "Task" else "")
             )
+            print(f"[update_node] Changing type: {current_type} -> {node_type}, query: {query}")
+            result = tx.run(query, id=id, now=now)
+            print(f"[update_node] Result: {result.consume().counters}")
 
     # Update other properties
     props = {}

@@ -181,12 +181,15 @@ async def add_task(req: TaskCreate):
 @router.patch("/tasks/{task_id}", response_model=OperationResult)
 async def set_task(task_id: str, req: TaskUpdate):
     """Update a task's properties."""
+    print(f"[set_task] task_id={task_id}, req.node_type={req.node_type}, type={type(req.node_type)}")
+    node_type_value = req.node_type.value if req.node_type else None
+    print(f"[set_task] node_type_value={node_type_value}")
     with get_session() as session:
         found = session.execute_write(
             lambda tx: services.update_node(
                 tx,
                 id=task_id,
-                node_type=req.node_type.value if req.node_type else None,
+                node_type=node_type_value,
                 text=req.text,
                 completed=req.completed,
                 due=req.due,
