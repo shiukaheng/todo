@@ -7,8 +7,6 @@
 
 import { NodeListOut, NodeListOutFromJSON } from './generated';
 
-// Backward compatibility alias
-export type TaskListOut = NodeListOut;
 export type TaskSubscriber = (data: NodeListOut) => void;
 
 export function subscribeToTasks(
