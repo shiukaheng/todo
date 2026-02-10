@@ -1,10 +1,13 @@
 """API routes."""
 from __future__ import annotations
 
+import logging
 from dataclasses import asdict
 
 from fastapi import APIRouter, HTTPException
 from sse_starlette.sse import EventSourceResponse
+
+logger = logging.getLogger(__name__)
 
 from app.core.db import get_session
 from app.core import services
@@ -181,9 +184,8 @@ async def add_task(req: TaskCreate):
 @router.patch("/tasks/{task_id}", response_model=OperationResult)
 async def set_task(task_id: str, req: TaskUpdate):
     """Update a task's properties."""
-    print(f"[set_task] task_id={task_id}, req.node_type={req.node_type}, type={type(req.node_type)}")
+    logger.debug(f"Updating task {task_id} with node_type={req.node_type}")
     node_type_value = req.node_type.value if req.node_type else None
-    print(f"[set_task] node_type_value={node_type_value}")
     with get_session() as session:
         found = session.execute_write(
             lambda tx: services.update_node(

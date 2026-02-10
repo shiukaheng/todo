@@ -1,9 +1,15 @@
 """Pure functional service layer for node operations - UPDATED FOR BOOLEAN GRAPH."""
 from __future__ import annotations
 
+import logging
 import time
 import uuid
 from dataclasses import dataclass
+
+logger = logging.getLogger(__name__)
+
+# Valid node types for whitelist validation
+VALID_NODE_TYPES = frozenset(["Task", "And", "Or", "Not", "ExactlyOne"])
 
 
 @dataclass
@@ -44,7 +50,7 @@ class Dependency:
 def _extract_node_type(labels: list[str]) -> str:
     """Extract node type from labels list."""
     for label in labels:
-        if label in ["Task", "And", "Or", "Not", "ExactlyOne"]:
+        if label in VALID_NODE_TYPES:
             return label
     return "Task"  # Default fallback
 
@@ -325,20 +331,59 @@ def update_node(
         current_type = _extract_node_type(current_labels)
 
         if current_type != node_type:
+            # Validate node types against whitelist
+            if current_type not in VALID_NODE_TYPES:
+                raise ValueError(f"Invalid current node type: {current_type}")
+            if node_type not in VALID_NODE_TYPES:
+                raise ValueError(f"Invalid target node type: {node_type}")
+
             # Change node type
-            query = (
-                f"MATCH (n:{current_type} {{id: $id}}) "
-                f"REMOVE n:{current_type} "
-                f"SET n:{node_type}, n.updated_at = $now "
-                # Add completed if converting TO Task
-                + (f"SET n.completed = {str(completed if completed is not None else False).lower()} "
-                   if node_type == "Task" and current_type != "Task" else "")
-                # Remove completed if converting FROM Task
-                + ("REMOVE n.completed " if current_type == "Task" and node_type != "Task" else "")
-            )
-            print(f"[update_node] Changing type: {current_type} -> {node_type}, query: {query}")
-            result = tx.run(query, id=id, now=now)
-            print(f"[update_node] Result: {result.consume().counters}")
+            logger.debug(f"Changing node type: {current_type} -> {node_type}")
+
+            # Handle completed property based on type transition
+            # Use WHERE clause to ensure atomicity - fails if type changed between read and write
+            if node_type == "Task" and current_type != "Task":
+                # Converting TO Task - add completed property
+                completed_value = completed if completed is not None else False
+                query = (
+                    f"MATCH (n:{current_type} {{id: $id}}) "
+                    f"WHERE $current_type IN labels(n) "  # Atomic check
+                    f"REMOVE n:{current_type} "
+                    f"SET n:{node_type}, n.updated_at = $now, n.completed = $completed "
+                    "RETURN n"
+                )
+                result = tx.run(query, id=id, now=now, completed=completed_value, current_type=current_type)
+            elif current_type == "Task" and node_type != "Task":
+                # Converting FROM Task - remove completed property
+                query = (
+                    f"MATCH (n:{current_type} {{id: $id}}) "
+                    f"WHERE $current_type IN labels(n) "  # Atomic check
+                    f"REMOVE n:{current_type}, n.completed "
+                    f"SET n:{node_type}, n.updated_at = $now "
+                    "RETURN n"
+                )
+                result = tx.run(query, id=id, now=now, current_type=current_type)
+            else:
+                # Simple type change without completed handling
+                query = (
+                    f"MATCH (n:{current_type} {{id: $id}}) "
+                    f"WHERE $current_type IN labels(n) "  # Atomic check
+                    f"REMOVE n:{current_type} "
+                    f"SET n:{node_type}, n.updated_at = $now "
+                    "RETURN n"
+                )
+                result = tx.run(query, id=id, now=now, current_type=current_type)
+
+            # Check if update succeeded
+            updated_record = result.single()
+            if not updated_record:
+                # Type changed between our read and write, or node disappeared
+                raise ValueError(
+                    f"Failed to change node type from {current_type} to {node_type}. "
+                    f"Node may have been modified concurrently."
+                )
+
+            logger.debug(f"Node type changed successfully: {current_type} -> {node_type}")
 
     # Update other properties
     props = {}
@@ -410,10 +455,47 @@ _CREATE_DEPENDENCY_QUERY = (
 
 
 def _create_dependency(tx, from_id: str, to_id: str) -> str:
-    """Create a dependency edge. Returns the dependency ID."""
+    """Create a dependency edge. Returns the dependency ID.
+
+    Validates:
+    - Both nodes exist
+    - No self-loops
+    - No cycles would be created
+    """
     if from_id == to_id:
         raise ValueError(f"Self-loop not allowed: {from_id}")
 
+    # Check both nodes exist separately for better error messages
+    from_exists = tx.run(
+        "MATCH (n:Node {id: $id}) RETURN n.id AS id",
+        id=from_id
+    ).single()
+    if not from_exists:
+        raise ValueError(f"Source node not found: {from_id}")
+
+    to_exists = tx.run(
+        "MATCH (n:Node {id: $id}) RETURN n.id AS id",
+        id=to_id
+    ).single()
+    if not to_exists:
+        raise ValueError(f"Target node not found: {to_id}")
+
+    # Check if this edge would create a cycle
+    # A cycle would exist if there's already a path from to_id to from_id
+    would_cycle = tx.run(
+        "MATCH (a:Node {id: $to_id}), (b:Node {id: $from_id}) "
+        "WHERE (a)-[:DEPENDS_ON*]->(b) "
+        "RETURN true AS cycle",
+        from_id=from_id, to_id=to_id
+    ).single()
+
+    if would_cycle:
+        raise ValueError(
+            f"Creating edge {from_id} -> {to_id} would create a cycle. "
+            f"A path already exists from {to_id} to {from_id}"
+        )
+
+    # Create the dependency edge (MERGE handles duplicates)
     dep_id = str(uuid.uuid4())
     result = tx.run(
         _CREATE_DEPENDENCY_QUERY,
@@ -421,7 +503,10 @@ def _create_dependency(tx, from_id: str, to_id: str) -> str:
     )
     record = result.single()
     if not record or not record["found"]:
-        raise ValueError(f"Node not found: {from_id} or {to_id}")
+        # This shouldn't happen since we checked above, but keep as safety
+        raise ValueError(f"Failed to create dependency")
+
+    logger.debug(f"Created dependency: {from_id} -> {to_id} (id: {dep_id})")
     return record["dep_id"]
 
 
