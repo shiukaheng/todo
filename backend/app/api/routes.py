@@ -23,19 +23,20 @@ from app.api.sse import publisher
 router = APIRouter()
 
 
-def _enriched_to_out(et: services.EnrichedTask) -> TaskOut:
-    """Convert EnrichedTask to Pydantic model."""
+def _enriched_to_out(et: services.EnrichedNode) -> TaskOut:
+    """Convert EnrichedNode to Pydantic model."""
     return TaskOut(
-        id=et.task.id,
-        text=et.task.text,
-        completed=et.task.completed,
-        inferred=et.task.inferred,
-        due=et.task.due,
-        created_at=et.task.created_at,
-        updated_at=et.task.updated_at,
-        calculated_completed=et.calculated_completed,
+        id=et.node.id,
+        text=et.node.text,
+        node_type=et.node.node_type,
+        completed=et.node.completed,
+        due=et.node.due,
+        created_at=et.node.created_at,
+        updated_at=et.node.updated_at,
+        calculated_value=et.calculated_value,
         calculated_due=et.calculated_due,
         deps_clear=et.deps_clear,
+        is_actionable=et.is_actionable,
     )
 
 
@@ -68,12 +69,12 @@ async def subscribe_tasks():
 async def list_tasks():
     """List all tasks with computed properties."""
     with get_session() as session:
-        tasks, dependencies, has_cycles = session.execute_read(services.list_tasks)
+        nodes, dependencies, has_cycles = session.execute_read(services.list_nodes)
 
-    # Build parent/child lookup: task_id -> list of dependency IDs
+    # Build parent/child lookup: node_id -> list of dependency IDs
     # Edge: from_id -[DEPENDS_ON]-> to_id means from_id depends on to_id
-    # parents = high-level goals that depend on this task (things this task blocks)
-    # children = sub-tasks this task depends on (things that block this task)
+    # parents = high-level goals that depend on this node (things this node blocks)
+    # children = sub-nodes this node depends on (things that block this node)
     parents_map: dict[str, list[str]] = {}   # to_id -> [dep.id, ...] (things that depend on to_id)
     children_map: dict[str, list[str]] = {}  # from_id -> [dep.id, ...] (things from_id depends on)
     for dep in dependencies:
@@ -82,21 +83,22 @@ async def list_tasks():
 
     return TaskListOut(
         tasks={
-            t.task.id: TaskOut(
-                id=t.task.id,
-                text=t.task.text,
-                completed=t.task.completed,
-                inferred=t.task.inferred,
-                due=t.task.due,
-                created_at=t.task.created_at,
-                updated_at=t.task.updated_at,
-                calculated_completed=t.calculated_completed,
+            t.node.id: TaskOut(
+                id=t.node.id,
+                text=t.node.text,
+                node_type=t.node.node_type,
+                completed=t.node.completed,
+                due=t.node.due,
+                created_at=t.node.created_at,
+                updated_at=t.node.updated_at,
+                calculated_value=t.calculated_value,
                 calculated_due=t.calculated_due,
                 deps_clear=t.deps_clear,
-                parents=parents_map.get(t.task.id, []),
-                children=children_map.get(t.task.id, []),
+                is_actionable=t.is_actionable,
+                parents=parents_map.get(t.node.id, []),
+                children=children_map.get(t.node.id, []),
             )
-            for t in tasks
+            for t in nodes
         },
         dependencies={d.id: _dep_to_out(d) for d in dependencies},
         has_cycles=has_cycles,
@@ -107,29 +109,30 @@ async def list_tasks():
 async def get_task(task_id: str):
     """Get a single task with computed properties."""
     with get_session() as session:
-        task = session.execute_read(
-            lambda tx: services.get_task(tx, task_id)
+        node = session.execute_read(
+            lambda tx: services.get_node(tx, task_id)
         )
-        if not task:
+        if not node:
             raise HTTPException(status_code=404, detail=f"Task '{task_id}' not found")
         # Get dependencies to build parents/children
         dependencies = session.execute_read(services.list_dependencies)
 
-    # Build parent/child lists for this task
+    # Build parent/child lists for this node
     parents = [d.id for d in dependencies if d.to_id == task_id]
     children = [d.id for d in dependencies if d.from_id == task_id]
 
     return TaskOut(
-        id=task.task.id,
-        text=task.task.text,
-        completed=task.task.completed,
-        inferred=task.task.inferred,
-        due=task.task.due,
-        created_at=task.task.created_at,
-        updated_at=task.task.updated_at,
-        calculated_completed=task.calculated_completed,
-        calculated_due=task.calculated_due,
-        deps_clear=task.deps_clear,
+        id=node.node.id,
+        text=node.node.text,
+        node_type=node.node.node_type,
+        completed=node.node.completed,
+        due=node.node.due,
+        created_at=node.node.created_at,
+        updated_at=node.node.updated_at,
+        calculated_value=node.calculated_value,
+        calculated_due=node.calculated_due,
+        deps_clear=node.deps_clear,
+        is_actionable=node.is_actionable,
         parents=parents,
         children=children,
     )
@@ -140,13 +143,13 @@ async def add_task(req: TaskCreate):
     """Create a new task."""
     try:
         with get_session() as session:
-            task = session.execute_write(
-                lambda tx: services.add_task(
+            node = session.execute_write(
+                lambda tx: services.add_node(
                     tx,
                     id=req.id,
+                    node_type=req.node_type.value if req.node_type else "Task",
                     text=req.text,
                     completed=req.completed,
-                    inferred=req.inferred,
                     due=req.due,
                     depends=req.depends,
                     blocks=req.blocks,
@@ -159,16 +162,17 @@ async def add_task(req: TaskCreate):
 
     await publisher.broadcast()
     return TaskOut(
-        id=task.id,
-        text=task.text,
-        completed=task.completed,
-        inferred=task.inferred,
-        due=task.due,
-        created_at=task.created_at,
-        updated_at=task.updated_at,
-        calculated_completed=None,
+        id=node.id,
+        text=node.text,
+        node_type=node.node_type,
+        completed=node.completed,
+        due=node.due,
+        created_at=node.created_at,
+        updated_at=node.updated_at,
+        calculated_value=None,
         calculated_due=None,
         deps_clear=None,
+        is_actionable=None,
         parents=[],   # caller should re-fetch if depends/blocks were provided
         children=[],
     )
@@ -179,12 +183,12 @@ async def set_task(task_id: str, req: TaskUpdate):
     """Update a task's properties."""
     with get_session() as session:
         found = session.execute_write(
-            lambda tx: services.update_task(
+            lambda tx: services.update_node(
                 tx,
                 id=task_id,
+                node_type=req.node_type.value if req.node_type else None,
                 text=req.text,
                 completed=req.completed,
-                inferred=req.inferred,
                 due=req.due,
             )
         )
@@ -201,7 +205,7 @@ async def remove_task(task_id: str):
     """Delete a task and its edges."""
     with get_session() as session:
         found = session.execute_write(
-            lambda tx: services.remove_task(tx, task_id)
+            lambda tx: services.remove_node(tx, task_id)
         )
 
     if not found:
@@ -217,7 +221,7 @@ async def rename_task(task_id: str, req: RenameRequest):
     try:
         with get_session() as session:
             session.execute_write(
-                lambda tx: services.rename_task(tx, task_id, req.new_id)
+                lambda tx: services.rename_node(tx, task_id, req.new_id)
             )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -237,7 +241,7 @@ async def link_tasks(req: LinkRequest):
     try:
         with get_session() as session:
             dep_id = session.execute_write(
-                lambda tx: services.link_tasks(tx, req.from_id, req.to_id)
+                lambda tx: services.link_nodes(tx, req.from_id, req.to_id)
             )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -251,7 +255,7 @@ async def unlink_tasks(req: LinkRequest):
     """Remove a dependency."""
     with get_session() as session:
         found = session.execute_write(
-            lambda tx: services.unlink_tasks(tx, req.from_id, req.to_id)
+            lambda tx: services.unlink_nodes(tx, req.from_id, req.to_id)
         )
 
     if not found:

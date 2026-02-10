@@ -1,30 +1,29 @@
 
-# ValidationError
+# NodeUpdate
 
+Node update request.
 
 ## Properties
 
 Name | Type
 ------------ | -------------
-`loc` | [Array&lt;LocationInner&gt;](LocationInner.md)
-`msg` | string
-`type` | string
-`input` | any
-`ctx` | object
+`text` | string
+`completed` | boolean
+`nodeType` | [NodeType](NodeType.md)
+`due` | number
 
 ## Example
 
 ```typescript
-import type { ValidationError } from ''
+import type { NodeUpdate } from ''
 
 // TODO: Update the object below with actual values
 const example = {
-  "loc": null,
-  "msg": null,
-  "type": null,
-  "input": null,
-  "ctx": null,
-} satisfies ValidationError
+  "text": null,
+  "completed": null,
+  "nodeType": null,
+  "due": null,
+} satisfies NodeUpdate
 
 console.log(example)
 
@@ -33,7 +32,7 @@ const exampleJSON: string = JSON.stringify(example)
 console.log(exampleJSON)
 
 // Parse the JSON string back to an object
-const exampleParsed = JSON.parse(exampleJSON) as ValidationError
+const exampleParsed = JSON.parse(exampleJSON) as NodeUpdate
 console.log(exampleParsed)
 ```
 

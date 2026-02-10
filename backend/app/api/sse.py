@@ -52,14 +52,14 @@ class SSEPublisher:
                     pass  # Skip slow clients
 
     def _get_current_state(self) -> dict:
-        """Get current task list state matching TaskListOut schema."""
+        """Get current task list state matching NodeListOut schema."""
         with get_session() as session:
-            tasks, dependencies, has_cycles = session.execute_read(services.list_tasks)
+            nodes, dependencies, has_cycles = session.execute_read(services.list_nodes)
 
-        # Build parent/child lookup: task_id -> list of dependency IDs
+        # Build parent/child lookup: node_id -> list of dependency IDs
         # Edge: from_id -[DEPENDS_ON]-> to_id means from_id depends on to_id
-        # parents = high-level goals that depend on this task (things this task blocks)
-        # children = sub-tasks this task depends on (things that block this task)
+        # parents = high-level goals that depend on this node (things this node blocks)
+        # children = sub-nodes this node depends on (things that block this node)
         parents_map: dict[str, list[str]] = {}   # to_id -> [dep.id, ...] (things that depend on to_id)
         children_map: dict[str, list[str]] = {}  # from_id -> [dep.id, ...] (things from_id depends on)
         for dep in dependencies:
@@ -68,21 +68,22 @@ class SSEPublisher:
 
         return {
             "tasks": {
-                et.task.id: {
-                    "id": et.task.id,
-                    "text": et.task.text,
-                    "completed": et.task.completed,
-                    "inferred": et.task.inferred,
-                    "due": et.task.due,
-                    "created_at": et.task.created_at,
-                    "updated_at": et.task.updated_at,
-                    "calculated_completed": et.calculated_completed,
+                et.node.id: {
+                    "id": et.node.id,
+                    "text": et.node.text,
+                    "node_type": et.node.node_type,
+                    "completed": et.node.completed,
+                    "due": et.node.due,
+                    "created_at": et.node.created_at,
+                    "updated_at": et.node.updated_at,
+                    "calculated_value": et.calculated_value,
                     "calculated_due": et.calculated_due,
                     "deps_clear": et.deps_clear,
-                    "parents": parents_map.get(et.task.id, []),
-                    "children": children_map.get(et.task.id, []),
+                    "is_actionable": et.is_actionable,
+                    "parents": parents_map.get(et.node.id, []),
+                    "children": children_map.get(et.node.id, []),
                 }
-                for et in tasks
+                for et in nodes
             },
             "dependencies": {
                 dep.id: {
