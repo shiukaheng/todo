@@ -18,12 +18,12 @@ import type {
   DependencyOut,
   HTTPValidationError,
   LinkRequest,
+  NodeCreate,
+  NodeListOut,
+  NodeOut,
+  NodeUpdate,
   OperationResult,
   RenameRequest,
-  TaskCreate,
-  TaskListOut,
-  TaskOut,
-  TaskUpdate,
 } from '../models/index';
 import {
     DependencyOutFromJSON,
@@ -32,22 +32,22 @@ import {
     HTTPValidationErrorToJSON,
     LinkRequestFromJSON,
     LinkRequestToJSON,
+    NodeCreateFromJSON,
+    NodeCreateToJSON,
+    NodeListOutFromJSON,
+    NodeListOutToJSON,
+    NodeOutFromJSON,
+    NodeOutToJSON,
+    NodeUpdateFromJSON,
+    NodeUpdateToJSON,
     OperationResultFromJSON,
     OperationResultToJSON,
     RenameRequestFromJSON,
     RenameRequestToJSON,
-    TaskCreateFromJSON,
-    TaskCreateToJSON,
-    TaskListOutFromJSON,
-    TaskListOutToJSON,
-    TaskOutFromJSON,
-    TaskOutToJSON,
-    TaskUpdateFromJSON,
-    TaskUpdateToJSON,
 } from '../models/index';
 
 export interface AddTaskApiTasksPostRequest {
-    taskCreate: TaskCreate;
+    nodeCreate: NodeCreate;
 }
 
 export interface GetTaskApiTasksTaskIdGetRequest {
@@ -69,7 +69,7 @@ export interface RenameTaskApiTasksTaskIdRenamePostRequest {
 
 export interface SetTaskApiTasksTaskIdPatchRequest {
     taskId: string;
-    taskUpdate: TaskUpdate;
+    nodeUpdate: NodeUpdate;
 }
 
 export interface UnlinkTasksApiLinksDeleteRequest {
@@ -85,11 +85,11 @@ export class DefaultApi extends runtime.BaseAPI {
      * Create a new task.
      * Add Task
      */
-    async addTaskApiTasksPostRaw(requestParameters: AddTaskApiTasksPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<TaskOut>> {
-        if (requestParameters['taskCreate'] == null) {
+    async addTaskApiTasksPostRaw(requestParameters: AddTaskApiTasksPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<NodeOut>> {
+        if (requestParameters['nodeCreate'] == null) {
             throw new runtime.RequiredError(
-                'taskCreate',
-                'Required parameter "taskCreate" was null or undefined when calling addTaskApiTasksPost().'
+                'nodeCreate',
+                'Required parameter "nodeCreate" was null or undefined when calling addTaskApiTasksPost().'
             );
         }
 
@@ -107,17 +107,17 @@ export class DefaultApi extends runtime.BaseAPI {
             method: 'POST',
             headers: headerParameters,
             query: queryParameters,
-            body: TaskCreateToJSON(requestParameters['taskCreate']),
+            body: NodeCreateToJSON(requestParameters['nodeCreate']),
         }, initOverrides);
 
-        return new runtime.JSONApiResponse(response, (jsonValue) => TaskOutFromJSON(jsonValue));
+        return new runtime.JSONApiResponse(response, (jsonValue) => NodeOutFromJSON(jsonValue));
     }
 
     /**
      * Create a new task.
      * Add Task
      */
-    async addTaskApiTasksPost(requestParameters: AddTaskApiTasksPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<TaskOut> {
+    async addTaskApiTasksPost(requestParameters: AddTaskApiTasksPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<NodeOut> {
         const response = await this.addTaskApiTasksPostRaw(requestParameters, initOverrides);
         return await response.value();
     }
@@ -126,7 +126,7 @@ export class DefaultApi extends runtime.BaseAPI {
      * Get a single task with computed properties.
      * Get Task
      */
-    async getTaskApiTasksTaskIdGetRaw(requestParameters: GetTaskApiTasksTaskIdGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<TaskOut>> {
+    async getTaskApiTasksTaskIdGetRaw(requestParameters: GetTaskApiTasksTaskIdGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<NodeOut>> {
         if (requestParameters['taskId'] == null) {
             throw new runtime.RequiredError(
                 'taskId',
@@ -149,14 +149,14 @@ export class DefaultApi extends runtime.BaseAPI {
             query: queryParameters,
         }, initOverrides);
 
-        return new runtime.JSONApiResponse(response, (jsonValue) => TaskOutFromJSON(jsonValue));
+        return new runtime.JSONApiResponse(response, (jsonValue) => NodeOutFromJSON(jsonValue));
     }
 
     /**
      * Get a single task with computed properties.
      * Get Task
      */
-    async getTaskApiTasksTaskIdGet(requestParameters: GetTaskApiTasksTaskIdGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<TaskOut> {
+    async getTaskApiTasksTaskIdGet(requestParameters: GetTaskApiTasksTaskIdGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<NodeOut> {
         const response = await this.getTaskApiTasksTaskIdGetRaw(requestParameters, initOverrides);
         return await response.value();
     }
@@ -272,7 +272,7 @@ export class DefaultApi extends runtime.BaseAPI {
      * List all tasks with computed properties.
      * List Tasks
      */
-    async listTasksApiTasksGetRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<TaskListOut>> {
+    async listTasksApiTasksGetRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<NodeListOut>> {
         const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
@@ -287,14 +287,14 @@ export class DefaultApi extends runtime.BaseAPI {
             query: queryParameters,
         }, initOverrides);
 
-        return new runtime.JSONApiResponse(response, (jsonValue) => TaskListOutFromJSON(jsonValue));
+        return new runtime.JSONApiResponse(response, (jsonValue) => NodeListOutFromJSON(jsonValue));
     }
 
     /**
      * List all tasks with computed properties.
      * List Tasks
      */
-    async listTasksApiTasksGet(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<TaskListOut> {
+    async listTasksApiTasksGet(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<NodeListOut> {
         const response = await this.listTasksApiTasksGetRaw(initOverrides);
         return await response.value();
     }
@@ -399,10 +399,10 @@ export class DefaultApi extends runtime.BaseAPI {
             );
         }
 
-        if (requestParameters['taskUpdate'] == null) {
+        if (requestParameters['nodeUpdate'] == null) {
             throw new runtime.RequiredError(
-                'taskUpdate',
-                'Required parameter "taskUpdate" was null or undefined when calling setTaskApiTasksTaskIdPatch().'
+                'nodeUpdate',
+                'Required parameter "nodeUpdate" was null or undefined when calling setTaskApiTasksTaskIdPatch().'
             );
         }
 
@@ -421,7 +421,7 @@ export class DefaultApi extends runtime.BaseAPI {
             method: 'PATCH',
             headers: headerParameters,
             query: queryParameters,
-            body: TaskUpdateToJSON(requestParameters['taskUpdate']),
+            body: NodeUpdateToJSON(requestParameters['nodeUpdate']),
         }, initOverrides);
 
         return new runtime.JSONApiResponse(response, (jsonValue) => OperationResultFromJSON(jsonValue));

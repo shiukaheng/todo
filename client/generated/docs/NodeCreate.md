@@ -1,30 +1,35 @@
 
-# ValidationError
+# NodeCreate
 
+Node creation request.
 
 ## Properties
 
 Name | Type
 ------------ | -------------
-`loc` | [Array&lt;LocationInner&gt;](LocationInner.md)
-`msg` | string
-`type` | string
-`input` | any
-`ctx` | object
+`text` | string
+`completed` | boolean
+`nodeType` | [NodeType](NodeType.md)
+`due` | number
+`id` | string
+`depends` | Array&lt;string&gt;
+`blocks` | Array&lt;string&gt;
 
 ## Example
 
 ```typescript
-import type { ValidationError } from ''
+import type { NodeCreate } from ''
 
 // TODO: Update the object below with actual values
 const example = {
-  "loc": null,
-  "msg": null,
-  "type": null,
-  "input": null,
-  "ctx": null,
-} satisfies ValidationError
+  "text": null,
+  "completed": null,
+  "nodeType": null,
+  "due": null,
+  "id": null,
+  "depends": null,
+  "blocks": null,
+} satisfies NodeCreate
 
 console.log(example)
 
@@ -33,7 +38,7 @@ const exampleJSON: string = JSON.stringify(example)
 console.log(exampleJSON)
 
 // Parse the JSON string back to an object
-const exampleParsed = JSON.parse(exampleJSON) as ValidationError
+const exampleParsed = JSON.parse(exampleJSON) as NodeCreate
 console.log(exampleParsed)
 ```
 

@@ -1,32 +1,31 @@
-"""Pure functional service layer for task operations."""
+"""Pure functional service layer for node operations - UPDATED FOR BOOLEAN GRAPH."""
 from __future__ import annotations
 
 import time
 import uuid
-from dataclasses import dataclass, field
-
-
+from dataclasses import dataclass
 
 
 @dataclass
-class Task:
-    """Task data."""
+class Node:
+    """Node data (any type)."""
     id: str
+    node_type: str  # "Task", "And", "Or", "Not", "ExactlyOne" - DERIVED from labels
     text: str = ""
-    completed: bool = False
-    inferred: bool = False
+    completed: bool | None = None  # Only for Task nodes
     due: int | None = None
     created_at: int | None = None
     updated_at: int | None = None
 
 
 @dataclass
-class EnrichedTask:
-    """Task with calculated properties."""
-    task: Task
-    calculated_completed: bool | None = None
+class EnrichedNode:
+    """Node with calculated properties."""
+    node: Node
+    calculated_value: bool | None = None  # Renamed from calculated_completed
     calculated_due: int | None = None
     deps_clear: bool | None = None
+    is_actionable: bool | None = None
 
 
 @dataclass
@@ -37,46 +36,42 @@ class Dependency:
     to_id: str
 
 
-_ENRICHMENT = """
-    OPTIONAL MATCH (t)-[:DEPENDS_ON]->(anyDep:Task)
-    OPTIONAL MATCH (t)<-[:DEPENDS_ON*]-(downstream:Task)
-    WHERE downstream <> t
-    WITH t,
-         collect(DISTINCT anyDep) AS all_deps,
-         [x IN collect(DISTINCT downstream.due) WHERE x IS NOT NULL] +
-           (CASE WHEN t.due IS NULL THEN [] ELSE [t.due] END) AS dues
-    RETURN t,
-           (t.inferred OR t.completed) AND (size(all_deps) = 0 OR all(d IN all_deps WHERE d.completed = true))
-             AS calculated_completed,
-           CASE WHEN size(dues) = 0 THEN NULL
-                ELSE reduce(d = head(dues), x IN dues | CASE WHEN x < d THEN x ELSE d END)
-           END AS calculated_due,
-           size(all_deps) = 0 OR all(d IN all_deps WHERE d.completed = true)
-             AS deps_clear
-"""
+# ============================================================================
+# Helper functions
+# ============================================================================
 
 
-def _node_to_task(node) -> Task:
-    """Convert Neo4j node to Task."""
-    d = dict(node)
-    return Task(
-        id=d.get("id", ""),
-        text=d.get("text", ""),
-        completed=d.get("completed", False),
-        inferred=d.get("inferred", False),
-        due=d.get("due"),
-        created_at=d.get("created_at"),
-        updated_at=d.get("updated_at"),
+def _extract_node_type(labels: list[str]) -> str:
+    """Extract node type from labels list."""
+    for label in labels:
+        if label in ["Task", "And", "Or", "Not", "ExactlyOne"]:
+            return label
+    return "Task"  # Default fallback
+
+
+def _node_to_dict(record) -> Node:
+    """Convert Neo4j record to Node."""
+    node_data = dict(record["n"])
+    labels = record["labels"]
+
+    return Node(
+        id=node_data.get("id", ""),
+        node_type=_extract_node_type(labels),
+        text=node_data.get("text", ""),
+        completed=node_data.get("completed"),  # None for gates
+        due=node_data.get("due"),
+        created_at=node_data.get("created_at"),
+        updated_at=node_data.get("updated_at"),
     )
 
 
-def _record_to_enriched(record, skip_calculated: bool = False) -> EnrichedTask:
-    """Convert query record to EnrichedTask."""
-    return EnrichedTask(
-        task=_node_to_task(record["t"]),
-        calculated_completed=None if skip_calculated else record.get("calculated_completed"),
-        calculated_due=None if skip_calculated else record.get("calculated_due"),
-        deps_clear=None if skip_calculated else record.get("deps_clear"),
+def _record_to_enriched(record) -> EnrichedNode:
+    """Convert query record to EnrichedNode (values calculated separately in Python)."""
+    return EnrichedNode(
+        node=_node_to_dict(record),
+        calculated_value=None,  # Calculated in Python later
+        calculated_due=None,     # Calculated in Python later
+        deps_clear=None,         # Calculated in Python later
     )
 
 
@@ -84,9 +79,90 @@ def _sort_by_updated(records: list) -> list:
     """Sort records by updated_at desc, falling back to created_at."""
     return sorted(
         records,
-        key=lambda r: dict(r["t"]).get("updated_at") or dict(r["t"]).get("created_at") or 0,
+        key=lambda r: dict(r["n"]).get("updated_at") or dict(r["n"]).get("created_at") or 0,
         reverse=True,
     )
+
+
+# ============================================================================
+# Pure calculation utilities (stateless, compositional)
+# ============================================================================
+
+def _calculate_gate_logic(node_type: str, dep_values: list[bool]) -> bool:
+    """Calculate gate-specific logic on dependencies (used for both calculated_value and deps_clear).
+
+    For Task and And: AND logic (all deps must be true)
+    For Or: OR logic (any dep must be true)
+    For Not: NOR logic (no deps must be true)
+    For ExactlyOne: XOR logic (exactly one dep must be true)
+    """
+    match node_type:
+        case "Task" | "And": return not dep_values or all(dep_values)
+        case "Or": return bool(dep_values) and any(dep_values)
+        case "Not": return not any(dep_values)
+        case "ExactlyOne": return sum(dep_values) == 1
+        case _: return True
+
+
+def _memoized(fn):
+    """Memoization decorator for single-arg functions."""
+    cache = {}
+    def wrapper(arg):
+        if arg not in cache:
+            cache[arg] = fn(arg)
+        return cache[arg]
+    return wrapper
+
+
+def _build_value_calculator(nodes: dict[str, Node], deps: dict[str, list[str]]):
+    """Build a memoized value calculator closure.
+
+    calculated_value = own_value AND deps_clear
+    - Task: own_value = completed, deps_clear = all(deps.calculated_value)
+    - Gates: own_value = true (identity), deps_clear = gate_logic(deps.calculated_value)
+    """
+    @_memoized
+    def calculate(node_id: str) -> bool:
+        node = nodes[node_id]
+        dep_values = [calculate(dep_id) for dep_id in deps.get(node_id, [])]
+
+        # deps_clear is gate-specific evaluation of dependencies
+        deps_clear = _calculate_gate_logic(node.node_type, dep_values)
+
+        if node.node_type == "Task":
+            # Task: calculated_value = completed AND deps_clear
+            return (node.completed or False) and deps_clear
+        else:
+            # Gates: calculated_value = deps_clear (no own value)
+            return deps_clear
+    return calculate
+
+
+def _build_due_calculator(nodes: dict[str, Node], downstream: dict[str, list[str]]):
+    """Build a memoized due date calculator closure."""
+    @_memoized
+    def calculate(node_id: str) -> int | None:
+        dues = [nodes[node_id].due] if nodes[node_id].due else []
+        dues.extend(filter(None, [calculate(d) for d in downstream.get(node_id, [])]))
+        return min(dues) if dues else None
+    return calculate
+
+
+def _build_graph_indexes(nodes: list[Node], deps: list[Dependency]):
+    """Build lookup indexes from raw data."""
+    nodes_by_id = {n.id: n for n in nodes}
+
+    deps_fwd = {}  # from_id -> [to_id, ...]
+    deps_rev = {}  # to_id -> [from_id, ...]
+    for d in deps:
+        deps_fwd.setdefault(d.from_id, []).append(d.to_id)
+        deps_rev.setdefault(d.to_id, []).append(d.from_id)
+
+    return nodes_by_id, deps_fwd, deps_rev
+
+
+# Simplified Cypher query - just fetch data
+_ENRICHMENT = """ RETURN n, labels(n) AS labels """
 
 
 # ============================================================================
@@ -97,60 +173,15 @@ def _sort_by_updated(records: list) -> list:
 def has_cycles(tx) -> bool:
     """Check if the graph has any cycles."""
     result = tx.run(
-        "MATCH (t:Task) WHERE (t)-[:DEPENDS_ON*1..]->(t) RETURN t.id LIMIT 1"
+        "MATCH (n:Node) WHERE (n)-[:DEPENDS_ON*1..]->(n) RETURN n.id LIMIT 1"
     )
     return result.single() is not None
-
-
-# Reusable finalization suffix. Expects `_passthrough` variable to exist.
-# Returns: _passthrough (preserved), _reduced (count), _errors (list)
-_FINALIZE_SUFFIX = """
-// Transitive reduction: remove edges implied by longer paths
-CALL {
-    MATCH (a:Task)-[direct:DEPENDS_ON]->(c:Task)
-    WHERE EXISTS { MATCH (a)-[:DEPENDS_ON*2..]->(c) }
-    DELETE direct
-    RETURN count(direct) AS cnt
-}
-WITH _passthrough, cnt AS _reduced
-
-// Collect validation errors
-CALL {
-    OPTIONAL MATCH (t:Task) WHERE (t)-[:DEPENDS_ON*1..]->(t)
-    WITH t LIMIT 1
-    RETURN CASE WHEN t IS NOT NULL THEN 'Cycle involving: ' + t.id ELSE NULL END AS err
-    UNION ALL
-    OPTIONAL MATCH (t:Task)-[:DEPENDS_ON]->(t)
-    WITH t LIMIT 1
-    RETURN CASE WHEN t IS NOT NULL THEN 'Self-loop: ' + t.id ELSE NULL END AS err
-    UNION ALL
-    OPTIONAL MATCH (a:Task)-[r:DEPENDS_ON]->(b:Task)
-    WITH a.id AS from_id, b.id AS to_id, count(r) AS cnt
-    WHERE cnt > 1
-    WITH from_id, to_id, cnt LIMIT 1
-    RETURN CASE WHEN cnt > 1 THEN 'Duplicate edges: ' + from_id + ' -> ' + to_id ELSE NULL END AS err
-    UNION ALL
-    OPTIONAL MATCH (a:Task)-[r:DEPENDS_ON]->(b:Task)
-    WHERE r.id IS NULL
-    WITH a, b LIMIT 1
-    RETURN CASE WHEN a IS NOT NULL THEN 'Missing ID: ' + a.id + ' -> ' + b.id ELSE NULL END AS err
-}
-WITH _passthrough, _reduced, collect(err) AS _errs
-WITH _passthrough, _reduced, [e IN _errs WHERE e IS NOT NULL] AS _errors
-"""
-
-
-def _check_finalize_errors(record) -> None:
-    """Check finalize result for errors and raise if any."""
-    errors = record["_errors"]
-    if errors:
-        raise ValueError("; ".join(errors))
 
 
 def list_dependencies(tx) -> list[Dependency]:
     """List all dependencies."""
     result = tx.run(
-        "MATCH (a:Task)-[r:DEPENDS_ON]->(b:Task) "
+        "MATCH (a:Node)-[r:DEPENDS_ON]->(b:Node) "
         "RETURN r.id AS id, a.id AS from_id, b.id AS to_id"
     )
     return [
@@ -163,29 +194,57 @@ def list_dependencies(tx) -> list[Dependency]:
     ]
 
 
-def get_task(tx, id: str) -> EnrichedTask | None:
-    """Get a single task with computed properties."""
-    result = tx.run(
-        "MATCH (t:Task {id: $id})" + _ENRICHMENT,
-        id=id
-    )
-    record = result.single()
+def get_node(tx, id: str) -> EnrichedNode | None:
+    """Get a single node with computed properties."""
+    record = tx.run("MATCH (n:Node {id: $id})" + _ENRICHMENT, id=id).single()
     if not record:
         return None
-    return _record_to_enriched(record)
+
+    enriched = _record_to_enriched(record)
+
+    if not has_cycles(tx):
+        # Reuse list_nodes logic for consistency
+        all_nodes = [_node_to_dict(r) for r in tx.run("MATCH (n:Node)" + _ENRICHMENT)]
+        dependencies = list_dependencies(tx)
+
+        nodes_map, deps_fwd, deps_rev = _build_graph_indexes(all_nodes, dependencies)
+        calc_value = _build_value_calculator(nodes_map, deps_fwd)
+        calc_due = _build_due_calculator(nodes_map, deps_rev)
+
+        enriched.calculated_value = calc_value(id)
+        enriched.calculated_due = calc_due(id)
+        # deps_clear = gate-specific evaluation of dependencies
+        dep_values = [calc_value(d) for d in deps_fwd.get(id, [])]
+        enriched.deps_clear = _calculate_gate_logic(enriched.node.node_type, dep_values)
+        enriched.is_actionable = enriched.node.node_type == "Task" and not (enriched.node.completed or False) and enriched.deps_clear
+
+    return enriched
 
 
-def list_tasks(tx) -> tuple[list[EnrichedTask], list[Dependency], bool]:
-    """List all tasks with computed properties.
-
-    Returns (tasks, dependencies, has_cycles).
-    """
-    graph_has_cycles = has_cycles(tx)
-    result = tx.run("MATCH (t:Task)" + _ENRICHMENT)
-    records = _sort_by_updated(list(result))
-    tasks = [_record_to_enriched(r, skip_calculated=graph_has_cycles) for r in records]
+def list_nodes(tx) -> tuple[list[EnrichedNode], list[Dependency], bool]:
+    """List all nodes with computed properties."""
+    # Fetch data
+    records = _sort_by_updated(list(tx.run("MATCH (n:Node)" + _ENRICHMENT)))
+    enriched = [_record_to_enriched(r) for r in records]
     dependencies = list_dependencies(tx)
-    return tasks, dependencies, graph_has_cycles
+    graph_has_cycles = has_cycles(tx)
+
+    if not graph_has_cycles:
+        # Build indexes and calculators
+        nodes_map, deps_fwd, deps_rev = _build_graph_indexes([e.node for e in enriched], dependencies)
+        calc_value = _build_value_calculator(nodes_map, deps_fwd)
+        calc_due = _build_due_calculator(nodes_map, deps_rev)
+
+        # Calculate properties
+        for e in enriched:
+            e.calculated_value = calc_value(e.node.id)
+            e.calculated_due = calc_due(e.node.id)
+            # deps_clear = gate-specific evaluation of dependencies
+            dep_values = [calc_value(d) for d in deps_fwd.get(e.node.id, [])]
+            e.deps_clear = _calculate_gate_logic(e.node.node_type, dep_values)
+            e.is_actionable = e.node.node_type == "Task" and not (e.node.completed or False) and e.deps_clear
+
+    return enriched, dependencies, graph_has_cycles
 
 
 # ============================================================================
@@ -193,22 +252,20 @@ def list_tasks(tx) -> tuple[list[EnrichedTask], list[Dependency], bool]:
 # ============================================================================
 
 
-def add_task(
+def add_node(
     tx,
     id: str,
+    node_type: str = "Task",
     text: str | None = None,
     completed: bool = False,
-    inferred: bool = False,
-    due: str | None = None,
+    due: int | None = None,
     depends: list[str] | None = None,
     blocks: list[str] | None = None,
-) -> Task:
-    """Create a new task."""
+) -> Node:
+    """Create a new node of any type."""
     now = int(time.time())
     props = {
         "id": id,
-        "completed": completed,
-        "inferred": inferred,
         "created_at": now,
         "updated_at": now,
     }
@@ -217,101 +274,143 @@ def add_task(
     if due is not None:
         props["due"] = due
 
-    tx.run("CREATE (t:Task $props)", props=props)
+    # Only add completed for Task nodes
+    if node_type == "Task":
+        props["completed"] = completed
 
+    # Create with appropriate labels
+    labels = f":Node:{node_type}"
+    tx.run(f"CREATE (n{labels} $props)", props=props)
+
+    # Create DEPENDS_ON relationships
     for dep_id in (depends or []):
         _create_dependency(tx, id, dep_id)
     for block_id in (blocks or []):
         _create_dependency(tx, block_id, id)
 
-    return Task(**{k: v for k, v in props.items() if k in Task.__dataclass_fields__})
+    return Node(
+        id=id,
+        node_type=node_type,
+        text=props.get("text", ""),
+        completed=props.get("completed"),
+        due=props.get("due"),
+        created_at=now,
+        updated_at=now,
+    )
 
 
-def update_task(
+def update_node(
     tx,
     id: str,
+    node_type: str | None = None,
     text: str | None = None,
     completed: bool | None = None,
-    inferred: bool | None = None,
-    due: str | None = None,
+    due: int | None = None,
 ) -> bool:
-    """Update an existing task. Returns True if found."""
+    """Update an existing node. Returns True if found."""
+    now = int(time.time())
+
+    # If changing type, handle label changes
+    if node_type is not None:
+        # Get current labels
+        result = tx.run(
+            "MATCH (n:Node {id: $id}) RETURN labels(n) AS labels",
+            id=id
+        )
+        record = result.single()
+        if not record:
+            return False
+
+        current_labels = record["labels"]
+        current_type = _extract_node_type(current_labels)
+
+        if current_type != node_type:
+            # Change node type
+            query = (
+                f"MATCH (n:{current_type} {{id: $id}}) "
+                f"REMOVE n:{current_type} "
+                f"SET n:{node_type}, n.updated_at = $now "
+                # Add completed if converting TO Task
+                + (f"SET n.completed = {str(completed if completed is not None else False).lower()} "
+                   if node_type == "Task" and current_type != "Task" else "")
+                # Remove completed if converting FROM Task
+                + ("REMOVE n.completed " if current_type == "Task" and node_type != "Task" else "")
+            )
+            print(f"[update_node] Changing type: {current_type} -> {node_type}, query: {query}")
+            result = tx.run(query, id=id, now=now)
+            print(f"[update_node] Result: {result.consume().counters}")
+
+    # Update other properties
     props = {}
     if text is not None:
         props["text"] = text
     if completed is not None:
         props["completed"] = completed
-    if inferred is not None:
-        props["inferred"] = inferred
     if due is not None:
         props["due"] = due
 
-    if not props:
-        # Check if task exists
-        result = tx.run("MATCH (t:Task {id: $id}) RETURN t", id=id)
+    if props:
+        props["updated_at"] = now
+        result = tx.run(
+            "MATCH (n:Node {id: $id}) SET n += $props RETURN n",
+            id=id, props=props
+        )
         return result.single() is not None
 
-    props["updated_at"] = int(time.time())
-    result = tx.run(
-        "MATCH (t:Task {id: $id}) SET t += $props RETURN t",
-        id=id, props=props
-    )
-    return result.single() is not None
+    return True
 
 
-def link_tasks(tx, from_id: str, to_id: str) -> str:
+def link_nodes(tx, from_id: str, to_id: str) -> str:
     """Create dependency: from_id depends on to_id. Returns the dependency ID."""
     return _create_dependency(tx, from_id, to_id)
 
 
-def unlink_tasks(tx, from_id: str, to_id: str) -> bool:
+def unlink_nodes(tx, from_id: str, to_id: str) -> bool:
     """Remove dependency. Returns True if found."""
     result = tx.run(
-        "MATCH (a:Task {id: $from_id})-[r:DEPENDS_ON]->(b:Task {id: $to_id}) "
+        "MATCH (a:Node {id: $from_id})-[r:DEPENDS_ON]->(b:Node {id: $to_id}) "
         "DELETE r RETURN count(r) AS n",
         from_id=from_id, to_id=to_id
     )
     return result.single()["n"] > 0
 
 
-def remove_task(tx, id: str) -> bool:
-    """Remove a task. Returns True if found."""
+def remove_node(tx, id: str) -> bool:
+    """Remove a node. Returns True if found."""
     result = tx.run(
-        "MATCH (t:Task {id: $id}) DETACH DELETE t RETURN count(t) AS n",
+        "MATCH (n:Node {id: $id}) DETACH DELETE n RETURN count(n) AS n",
         id=id
     )
     return result.single()["n"] > 0
 
 
-def rename_task(tx, old_id: str, new_id: str) -> None:
-    """Rename a task. Raises if old not found or new already exists."""
+def rename_node(tx, old_id: str, new_id: str) -> None:
+    """Rename a node. Raises if old not found or new already exists."""
     if old_id == new_id:
         raise ValueError("Old and new IDs are the same")
 
     # Check new ID doesn't exist
-    if tx.run("MATCH (t:Task {id: $id}) RETURN t", id=new_id).single():
-        raise ValueError(f"Task '{new_id}' already exists")
+    if tx.run("MATCH (n:Node {id: $id}) RETURN n", id=new_id).single():
+        raise ValueError(f"Node '{new_id}' already exists")
 
     result = tx.run(
-        "MATCH (t:Task {id: $old_id}) SET t.id = $new_id, t.updated_at = $now RETURN t",
+        "MATCH (n:Node {id: $old_id}) SET n.id = $new_id, n.updated_at = $now RETURN n",
         old_id=old_id, new_id=new_id, now=int(time.time())
     )
     if not result.single():
-        raise ValueError(f"Task '{old_id}' not found")
+        raise ValueError(f"Node '{old_id}' not found")
 
 
 _CREATE_DEPENDENCY_QUERY = (
-    "MATCH (a:Task {id: $from_id}), (b:Task {id: $to_id}) "
+    "MATCH (a:Node {id: $from_id}), (b:Node {id: $to_id}) "
     "MERGE (a)-[r:DEPENDS_ON]->(b) "
     "ON CREATE SET r.id = $dep_id "
-    "WITH {dep_id: r.id, found: true} AS _passthrough "
-    + _FINALIZE_SUFFIX +
-    "RETURN _passthrough.dep_id AS dep_id, _passthrough.found AS found, _reduced, _errors"
+    "RETURN r.id AS dep_id, true AS found"
 )
 
 
 def _create_dependency(tx, from_id: str, to_id: str) -> str:
-    """Create a dependency edge with finalization. Returns the dependency ID."""
+    """Create a dependency edge. Returns the dependency ID."""
     if from_id == to_id:
         raise ValueError(f"Self-loop not allowed: {from_id}")
 
@@ -322,8 +421,7 @@ def _create_dependency(tx, from_id: str, to_id: str) -> str:
     )
     record = result.single()
     if not record or not record["found"]:
-        raise ValueError(f"Task not found: {from_id} or {to_id}")
-    _check_finalize_errors(record)
+        raise ValueError(f"Node not found: {from_id} or {to_id}")
     return record["dep_id"]
 
 
@@ -334,16 +432,39 @@ def _create_dependency(tx, from_id: str, to_id: str) -> str:
 
 def init_db(tx) -> None:
     """Initialize database constraints."""
+    # Drop old constraint
+    tx.run("DROP CONSTRAINT task_id_unique IF EXISTS")
+
+    # Create new constraint
     tx.run(
-        "CREATE CONSTRAINT task_id_unique IF NOT EXISTS "
-        "FOR (t:Task) REQUIRE t.id IS UNIQUE"
+        "CREATE CONSTRAINT node_id_unique IF NOT EXISTS "
+        "FOR (n:Node) REQUIRE n.id IS UNIQUE"
+    )
+
+
+def migrate_to_boolean_graph(tx) -> None:
+    """Migrate existing Task nodes to boolean graph schema."""
+    # 1. Add :Node label to all tasks
+    tx.run("MATCH (t:Task) SET t:Node")
+
+    # 2. Convert inferred tasks to And gates
+    tx.run(
+        "MATCH (t:Task {inferred: true}) "
+        "SET t:And "
+        "REMOVE t:Task, t.completed, t.inferred"
+    )
+
+    # 3. Remove inferred from regular tasks
+    tx.run(
+        "MATCH (t:Task {inferred: false}) "
+        "REMOVE t.inferred"
     )
 
 
 def migrate_dependency_ids(tx) -> None:
     """Assign UUIDs to any relationships missing an ID."""
     tx.run(
-        "MATCH (a:Task)-[r:DEPENDS_ON]->(b:Task) "
+        "MATCH (a:Node)-[r:DEPENDS_ON]->(b:Node) "
         "WHERE r.id IS NULL "
         "SET r.id = randomUUID()"
     )
@@ -352,7 +473,21 @@ def migrate_dependency_ids(tx) -> None:
 def prime_tokens(tx) -> None:
     """Create and delete a dummy node to register property keys."""
     tx.run(
-        "CREATE (t:__InitTokenRegistration:Task {id: '__init__', due: 0, completed: false, inferred: false, created_at: 0, updated_at: 0, text: ''}) "
-        "CREATE (t)-[:DEPENDS_ON {id: '__init__'}]->(t) "
-        "DETACH DELETE t"
+        "CREATE (n:__InitTokenRegistration:Node:Task "
+        "{id: '__init__', due: 0, completed: false, created_at: 0, updated_at: 0, text: ''}) "
+        "CREATE (n)-[:DEPENDS_ON {id: '__init__'}]->(n) "
+        "DETACH DELETE n"
     )
+
+
+# Backward compatibility aliases
+Task = Node
+EnrichedTask = EnrichedNode
+add_task = add_node
+update_task = update_node
+get_task = get_node
+list_tasks = list_nodes
+rename_task = rename_node
+remove_task = remove_node
+link_tasks = link_nodes
+unlink_tasks = unlink_nodes

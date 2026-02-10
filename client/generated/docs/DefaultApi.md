@@ -20,7 +20,7 @@ All URIs are relative to *http://localhost*
 
 ## addTaskApiTasksPost
 
-> TaskOut addTaskApiTasksPost(taskCreate)
+> NodeOut addTaskApiTasksPost(nodeCreate)
 
 Add Task
 
@@ -40,8 +40,8 @@ async function example() {
   const api = new DefaultApi();
 
   const body = {
-    // TaskCreate
-    taskCreate: ...,
+    // NodeCreate
+    nodeCreate: ...,
   } satisfies AddTaskApiTasksPostRequest;
 
   try {
@@ -61,11 +61,11 @@ example().catch(console.error);
 
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
-| **taskCreate** | [TaskCreate](TaskCreate.md) |  | |
+| **nodeCreate** | [NodeCreate](NodeCreate.md) |  | |
 
 ### Return type
 
-[**TaskOut**](TaskOut.md)
+[**NodeOut**](NodeOut.md)
 
 ### Authorization
 
@@ -88,7 +88,7 @@ No authorization required
 
 ## getTaskApiTasksTaskIdGet
 
-> TaskOut getTaskApiTasksTaskIdGet(taskId)
+> NodeOut getTaskApiTasksTaskIdGet(taskId)
 
 Get Task
 
@@ -133,7 +133,7 @@ example().catch(console.error);
 
 ### Return type
 
-[**TaskOut**](TaskOut.md)
+[**NodeOut**](NodeOut.md)
 
 ### Authorization
 
@@ -342,7 +342,7 @@ No authorization required
 
 ## listTasksApiTasksGet
 
-> TaskListOut listTasksApiTasksGet()
+> NodeListOut listTasksApiTasksGet()
 
 List Tasks
 
@@ -379,7 +379,7 @@ This endpoint does not need any parameter.
 
 ### Return type
 
-[**TaskListOut**](TaskListOut.md)
+[**NodeListOut**](NodeListOut.md)
 
 ### Authorization
 
@@ -540,7 +540,7 @@ No authorization required
 
 ## setTaskApiTasksTaskIdPatch
 
-> OperationResult setTaskApiTasksTaskIdPatch(taskId, taskUpdate)
+> OperationResult setTaskApiTasksTaskIdPatch(taskId, nodeUpdate)
 
 Set Task
 
@@ -562,8 +562,8 @@ async function example() {
   const body = {
     // string
     taskId: taskId_example,
-    // TaskUpdate
-    taskUpdate: ...,
+    // NodeUpdate
+    nodeUpdate: ...,
   } satisfies SetTaskApiTasksTaskIdPatchRequest;
 
   try {
@@ -584,7 +584,7 @@ example().catch(console.error);
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
 | **taskId** | `string` |  | [Defaults to `undefined`] |
-| **taskUpdate** | [TaskUpdate](TaskUpdate.md) |  | |
+| **nodeUpdate** | [NodeUpdate](NodeUpdate.md) |  | |
 
 ### Return type
 
