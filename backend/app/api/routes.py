@@ -116,7 +116,7 @@ async def get_task(task_id: str):
             lambda tx: services.get_node(tx, task_id)
         )
         if not node:
-            raise HTTPException(status_code=404, detail=f"Task '{task_id}' not found")
+            raise HTTPException(status_code=404, detail=f"Node '{task_id}' not found")
         # Get dependencies to build parents/children
         dependencies = session.execute_read(services.list_dependencies)
 
@@ -160,7 +160,7 @@ async def add_task(req: TaskCreate):
             )
     except Exception as e:
         if "already exists" in str(e).lower() or "unique" in str(e).lower():
-            raise HTTPException(status_code=409, detail=f"Task '{req.id}' already exists")
+            raise HTTPException(status_code=409, detail=f"Node '{req.id}' already exists")
         raise HTTPException(status_code=400, detail=str(e))
 
     await publisher.broadcast()
@@ -199,7 +199,7 @@ async def set_task(task_id: str, req: TaskUpdate):
         )
 
     if not found:
-        raise HTTPException(status_code=404, detail=f"Task '{task_id}' not found")
+        raise HTTPException(status_code=404, detail=f"Node '{task_id}' not found")
 
     await publisher.broadcast()
     return OperationResult(success=True)
@@ -214,10 +214,10 @@ async def remove_task(task_id: str):
         )
 
     if not found:
-        raise HTTPException(status_code=404, detail=f"Task '{task_id}' not found")
+        raise HTTPException(status_code=404, detail=f"Node '{task_id}' not found")
 
     await publisher.broadcast()
-    return OperationResult(success=True, message=f"Deleted task '{task_id}'")
+    return OperationResult(success=True, message=f"Deleted node '{task_id}'")
 
 
 @router.post("/tasks/{task_id}/rename", response_model=OperationResult)

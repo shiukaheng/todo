@@ -1,9 +1,11 @@
 """Pure functional service layer for node operations - UPDATED FOR BOOLEAN GRAPH."""
 from __future__ import annotations
 
+import functools
 import logging
 import time
 import uuid
+import warnings
 from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
@@ -55,7 +57,7 @@ def _extract_node_type(labels: list[str]) -> str:
     return "Task"  # Default fallback
 
 
-def _node_to_dict(record) -> Node:
+def _record_to_node(record) -> Node:
     """Convert Neo4j record to Node."""
     node_data = dict(record["n"])
     labels = record["labels"]
@@ -74,7 +76,7 @@ def _node_to_dict(record) -> Node:
 def _record_to_enriched(record) -> EnrichedNode:
     """Convert query record to EnrichedNode (values calculated separately in Python)."""
     return EnrichedNode(
-        node=_node_to_dict(record),
+        node=_record_to_node(record),
         calculated_value=None,  # Calculated in Python later
         calculated_due=None,     # Calculated in Python later
         deps_clear=None,         # Calculated in Python later
@@ -110,16 +112,6 @@ def _calculate_gate_logic(node_type: str, dep_values: list[bool]) -> bool:
         case _: return True
 
 
-def _memoized(fn):
-    """Memoization decorator for single-arg functions."""
-    cache = {}
-    def wrapper(arg):
-        if arg not in cache:
-            cache[arg] = fn(arg)
-        return cache[arg]
-    return wrapper
-
-
 def _build_value_calculator(nodes: dict[str, Node], deps: dict[str, list[str]]):
     """Build a memoized value calculator closure.
 
@@ -127,7 +119,7 @@ def _build_value_calculator(nodes: dict[str, Node], deps: dict[str, list[str]]):
     - Task: own_value = completed, deps_clear = all(deps.calculated_value)
     - Gates: own_value = true (identity), deps_clear = gate_logic(deps.calculated_value)
     """
-    @_memoized
+    @functools.lru_cache(maxsize=1024)
     def calculate(node_id: str) -> bool:
         node = nodes[node_id]
         dep_values = [calculate(dep_id) for dep_id in deps.get(node_id, [])]
@@ -137,7 +129,7 @@ def _build_value_calculator(nodes: dict[str, Node], deps: dict[str, list[str]]):
 
         if node.node_type == "Task":
             # Task: calculated_value = completed AND deps_clear
-            return (node.completed or False) and deps_clear
+            return (node.completed if node.completed is not None else False) and deps_clear
         else:
             # Gates: calculated_value = deps_clear (no own value)
             return deps_clear
@@ -146,7 +138,7 @@ def _build_value_calculator(nodes: dict[str, Node], deps: dict[str, list[str]]):
 
 def _build_due_calculator(nodes: dict[str, Node], downstream: dict[str, list[str]]):
     """Build a memoized due date calculator closure."""
-    @_memoized
+    @functools.lru_cache(maxsize=1024)
     def calculate(node_id: str) -> int | None:
         dues = [nodes[node_id].due] if nodes[node_id].due else []
         dues.extend(filter(None, [calculate(d) for d in downstream.get(node_id, [])]))
@@ -209,20 +201,31 @@ def get_node(tx, id: str) -> EnrichedNode | None:
     enriched = _record_to_enriched(record)
 
     if not has_cycles(tx):
-        # Reuse list_nodes logic for consistency
-        all_nodes = [_node_to_dict(r) for r in tx.run("MATCH (n:Node)" + _ENRICHMENT)]
-        dependencies = list_dependencies(tx)
+        # Fetch only nodes in transitive closure (dependencies of this node)
+        closure_records = tx.run(
+            "MATCH (start:Node {id: $id}) "
+            "OPTIONAL MATCH path = (start)-[:DEPENDS_ON*]->(dep) "
+            "WITH start, collect(DISTINCT dep) AS deps "
+            "UNWIND [start] + deps AS node "
+            "RETURN node AS n, labels(node) AS labels",
+            id=id
+        )
+        closure_nodes = [_record_to_node(r) for r in closure_records]
 
-        nodes_map, deps_fwd, deps_rev = _build_graph_indexes(all_nodes, dependencies)
+        # Fetch dependencies only within closure
+        closure_ids = {n.id for n in closure_nodes}
+        all_deps = list_dependencies(tx)
+        relevant_deps = [d for d in all_deps if d.from_id in closure_ids and d.to_id in closure_ids]
+
+        nodes_map, deps_fwd, deps_rev = _build_graph_indexes(closure_nodes, relevant_deps)
         calc_value = _build_value_calculator(nodes_map, deps_fwd)
         calc_due = _build_due_calculator(nodes_map, deps_rev)
 
         enriched.calculated_value = calc_value(id)
         enriched.calculated_due = calc_due(id)
-        # deps_clear = gate-specific evaluation of dependencies
         dep_values = [calc_value(d) for d in deps_fwd.get(id, [])]
         enriched.deps_clear = _calculate_gate_logic(enriched.node.node_type, dep_values)
-        enriched.is_actionable = enriched.node.node_type == "Task" and not (enriched.node.completed or False) and enriched.deps_clear
+        enriched.is_actionable = enriched.node.node_type == "Task" and not (enriched.node.completed if enriched.node.completed is not None else False) and enriched.deps_clear
 
     return enriched
 
@@ -248,7 +251,7 @@ def list_nodes(tx) -> tuple[list[EnrichedNode], list[Dependency], bool]:
             # deps_clear = gate-specific evaluation of dependencies
             dep_values = [calc_value(d) for d in deps_fwd.get(e.node.id, [])]
             e.deps_clear = _calculate_gate_logic(e.node.node_type, dep_values)
-            e.is_actionable = e.node.node_type == "Task" and not (e.node.completed or False) and e.deps_clear
+            e.is_actionable = e.node.node_type == "Task" and not (e.node.completed if e.node.completed is not None else False) and e.deps_clear
 
     return enriched, dependencies, graph_has_cycles
 
@@ -269,6 +272,9 @@ def add_node(
     blocks: list[str] | None = None,
 ) -> Node:
     """Create a new node of any type."""
+    if node_type not in VALID_NODE_TYPES:
+        raise ValueError(f"Invalid node type: {node_type}")
+
     now = int(time.time())
     props = {
         "id": id,
@@ -568,11 +574,83 @@ def prime_tokens(tx) -> None:
 # Backward compatibility aliases
 Task = Node
 EnrichedTask = EnrichedNode
-add_task = add_node
-update_task = update_node
-get_task = get_node
-list_tasks = list_nodes
-rename_task = rename_node
-remove_task = remove_node
-link_tasks = link_nodes
-unlink_tasks = unlink_nodes
+
+
+def add_task(*args, **kwargs):
+    """Deprecated: use add_node instead."""
+    warnings.warn(
+        "add_task is deprecated, use add_node instead",
+        DeprecationWarning,
+        stacklevel=2
+    )
+    return add_node(*args, **kwargs)
+
+
+def update_task(*args, **kwargs):
+    """Deprecated: use update_node instead."""
+    warnings.warn(
+        "update_task is deprecated, use update_node instead",
+        DeprecationWarning,
+        stacklevel=2
+    )
+    return update_node(*args, **kwargs)
+
+
+def get_task(*args, **kwargs):
+    """Deprecated: use get_node instead."""
+    warnings.warn(
+        "get_task is deprecated, use get_node instead",
+        DeprecationWarning,
+        stacklevel=2
+    )
+    return get_node(*args, **kwargs)
+
+
+def list_tasks(*args, **kwargs):
+    """Deprecated: use list_nodes instead."""
+    warnings.warn(
+        "list_tasks is deprecated, use list_nodes instead",
+        DeprecationWarning,
+        stacklevel=2
+    )
+    return list_nodes(*args, **kwargs)
+
+
+def rename_task(*args, **kwargs):
+    """Deprecated: use rename_node instead."""
+    warnings.warn(
+        "rename_task is deprecated, use rename_node instead",
+        DeprecationWarning,
+        stacklevel=2
+    )
+    return rename_node(*args, **kwargs)
+
+
+def remove_task(*args, **kwargs):
+    """Deprecated: use remove_node instead."""
+    warnings.warn(
+        "remove_task is deprecated, use remove_node instead",
+        DeprecationWarning,
+        stacklevel=2
+    )
+    return remove_node(*args, **kwargs)
+
+
+def link_tasks(*args, **kwargs):
+    """Deprecated: use link_nodes instead."""
+    warnings.warn(
+        "link_tasks is deprecated, use link_nodes instead",
+        DeprecationWarning,
+        stacklevel=2
+    )
+    return link_nodes(*args, **kwargs)
+
+
+def unlink_tasks(*args, **kwargs):
+    """Deprecated: use unlink_nodes instead."""
+    warnings.warn(
+        "unlink_tasks is deprecated, use unlink_nodes instead",
+        DeprecationWarning,
+        stacklevel=2
+    )
+    return unlink_nodes(*args, **kwargs)
