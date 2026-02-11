@@ -528,7 +528,15 @@ _CREATE_DEPENDENCY_QUERY = (
     "MATCH (a:Node {id: $from_id}), (b:Node {id: $to_id}) "
     "MERGE (a)-[r:DEPENDS_ON]->(b) "
     "ON CREATE SET r.id = $dep_id "
-    "RETURN r.id AS dep_id, true AS found"
+    "WITH {dep_id: r.id, found: true} AS _passthrough "
+    # Transitive reduction: remove edges implied by longer paths
+    "CALL { "
+    "  MATCH (x:Node)-[direct:DEPENDS_ON]->(y:Node) "
+    "  WHERE EXISTS { MATCH (x)-[:DEPENDS_ON*2..]->(y) } "
+    "  DELETE direct "
+    "  RETURN count(direct) AS cnt "
+    "} "
+    "RETURN _passthrough.dep_id AS dep_id, _passthrough.found AS found, cnt AS reduced"
 )
 
 
@@ -583,6 +591,10 @@ def _create_dependency(tx, from_id: str, to_id: str) -> str:
     if not record or not record["found"]:
         # This shouldn't happen since we checked above, but keep as safety
         raise ValueError(f"Failed to create dependency")
+
+    reduced_count = record.get("reduced", 0)
+    if reduced_count > 0:
+        logger.debug(f"Transitive reduction: removed {reduced_count} redundant edge(s)")
 
     logger.debug(f"Created dependency: {from_id} -> {to_id} (id: {dep_id})")
     return record["dep_id"]
