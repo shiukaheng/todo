@@ -15,6 +15,7 @@
 
 import * as runtime from '../runtime';
 import type {
+  AppState,
   DependencyOut,
   HTTPValidationError,
   LinkRequest,
@@ -23,9 +24,15 @@ import type {
   NodeOut,
   NodeUpdate,
   OperationResult,
+  PlanCreate,
+  PlanListOut,
+  PlanOut,
+  PlanUpdate,
   RenameRequest,
 } from '../models/index';
 import {
+    AppStateFromJSON,
+    AppStateToJSON,
     DependencyOutFromJSON,
     DependencyOutToJSON,
     HTTPValidationErrorFromJSON,
@@ -42,12 +49,32 @@ import {
     NodeUpdateToJSON,
     OperationResultFromJSON,
     OperationResultToJSON,
+    PlanCreateFromJSON,
+    PlanCreateToJSON,
+    PlanListOutFromJSON,
+    PlanListOutToJSON,
+    PlanOutFromJSON,
+    PlanOutToJSON,
+    PlanUpdateFromJSON,
+    PlanUpdateToJSON,
     RenameRequestFromJSON,
     RenameRequestToJSON,
 } from '../models/index';
 
 export interface AddTaskApiTasksPostRequest {
     nodeCreate: NodeCreate;
+}
+
+export interface CreatePlanApiPlansPostRequest {
+    planCreate: PlanCreate;
+}
+
+export interface DeletePlanApiPlansPlanIdDeleteRequest {
+    planId: string;
+}
+
+export interface GetPlanApiPlansPlanIdGetRequest {
+    planId: string;
 }
 
 export interface GetTaskApiTasksTaskIdGetRequest {
@@ -74,6 +101,11 @@ export interface SetTaskApiTasksTaskIdPatchRequest {
 
 export interface UnlinkTasksApiLinksDeleteRequest {
     linkRequest: LinkRequest;
+}
+
+export interface UpdatePlanApiPlansPlanIdPatchRequest {
+    planId: string;
+    planUpdate: PlanUpdate;
 }
 
 /**
@@ -119,6 +151,156 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async addTaskApiTasksPost(requestParameters: AddTaskApiTasksPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<NodeOut> {
         const response = await this.addTaskApiTasksPostRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Create a new plan.
+     * Create Plan
+     */
+    async createPlanApiPlansPostRaw(requestParameters: CreatePlanApiPlansPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PlanOut>> {
+        if (requestParameters['planCreate'] == null) {
+            throw new runtime.RequiredError(
+                'planCreate',
+                'Required parameter "planCreate" was null or undefined when calling createPlanApiPlansPost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/plans`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: PlanCreateToJSON(requestParameters['planCreate']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => PlanOutFromJSON(jsonValue));
+    }
+
+    /**
+     * Create a new plan.
+     * Create Plan
+     */
+    async createPlanApiPlansPost(requestParameters: CreatePlanApiPlansPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PlanOut> {
+        const response = await this.createPlanApiPlansPostRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Delete a plan.
+     * Delete Plan
+     */
+    async deletePlanApiPlansPlanIdDeleteRaw(requestParameters: DeletePlanApiPlansPlanIdDeleteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<OperationResult>> {
+        if (requestParameters['planId'] == null) {
+            throw new runtime.RequiredError(
+                'planId',
+                'Required parameter "planId" was null or undefined when calling deletePlanApiPlansPlanIdDelete().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/plans/{plan_id}`;
+        urlPath = urlPath.replace(`{${"plan_id"}}`, encodeURIComponent(String(requestParameters['planId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => OperationResultFromJSON(jsonValue));
+    }
+
+    /**
+     * Delete a plan.
+     * Delete Plan
+     */
+    async deletePlanApiPlansPlanIdDelete(requestParameters: DeletePlanApiPlansPlanIdDeleteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<OperationResult> {
+        const response = await this.deletePlanApiPlansPlanIdDeleteRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Get a single plan with its steps.
+     * Get Plan
+     */
+    async getPlanApiPlansPlanIdGetRaw(requestParameters: GetPlanApiPlansPlanIdGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PlanOut>> {
+        if (requestParameters['planId'] == null) {
+            throw new runtime.RequiredError(
+                'planId',
+                'Required parameter "planId" was null or undefined when calling getPlanApiPlansPlanIdGet().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/plans/{plan_id}`;
+        urlPath = urlPath.replace(`{${"plan_id"}}`, encodeURIComponent(String(requestParameters['planId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => PlanOutFromJSON(jsonValue));
+    }
+
+    /**
+     * Get a single plan with its steps.
+     * Get Plan
+     */
+    async getPlanApiPlansPlanIdGet(requestParameters: GetPlanApiPlansPlanIdGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PlanOut> {
+        const response = await this.getPlanApiPlansPlanIdGetRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Get current complete application state (one-shot).
+     * Get State
+     */
+    async getStateApiStateGetRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<AppState>> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/state`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => AppStateFromJSON(jsonValue));
+    }
+
+    /**
+     * Get current complete application state (one-shot).
+     * Get State
+     */
+    async getStateApiStateGet(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AppState> {
+        const response = await this.getStateApiStateGetRaw(initOverrides);
         return await response.value();
     }
 
@@ -265,6 +447,37 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async linkTasksApiLinksPost(requestParameters: LinkTasksApiLinksPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DependencyOut> {
         const response = await this.linkTasksApiLinksPostRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * List all plans with their steps.
+     * List Plans
+     */
+    async listPlansApiPlansGetRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PlanListOut>> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/plans`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => PlanListOutFromJSON(jsonValue));
+    }
+
+    /**
+     * List all plans with their steps.
+     * List Plans
+     */
+    async listPlansApiPlansGet(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PlanListOut> {
+        const response = await this.listPlansApiPlansGetRaw(initOverrides);
         return await response.value();
     }
 
@@ -437,7 +650,42 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Subscribe to real-time task updates via SSE.
+     * Subscribe to real-time state updates via SSE.
+     * Subscribe State
+     */
+    async subscribeStateApiStateSubscribeGetRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/api/state/subscribe`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<any>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     * Subscribe to real-time state updates via SSE.
+     * Subscribe State
+     */
+    async subscribeStateApiStateSubscribeGet(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
+        const response = await this.subscribeStateApiStateSubscribeGetRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Subscribe to real-time task updates via SSE (deprecated - use /state/subscribe).
      * Subscribe Tasks
      */
     async subscribeTasksApiTasksSubscribeGetRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<any>> {
@@ -463,7 +711,7 @@ export class DefaultApi extends runtime.BaseAPI {
     }
 
     /**
-     * Subscribe to real-time task updates via SSE.
+     * Subscribe to real-time task updates via SSE (deprecated - use /state/subscribe).
      * Subscribe Tasks
      */
     async subscribeTasksApiTasksSubscribeGet(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
@@ -509,6 +757,55 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async unlinkTasksApiLinksDelete(requestParameters: UnlinkTasksApiLinksDeleteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<OperationResult> {
         const response = await this.unlinkTasksApiLinksDeleteRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Update a plan\'s properties.
+     * Update Plan
+     */
+    async updatePlanApiPlansPlanIdPatchRaw(requestParameters: UpdatePlanApiPlansPlanIdPatchRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<PlanOut>> {
+        if (requestParameters['planId'] == null) {
+            throw new runtime.RequiredError(
+                'planId',
+                'Required parameter "planId" was null or undefined when calling updatePlanApiPlansPlanIdPatch().'
+            );
+        }
+
+        if (requestParameters['planUpdate'] == null) {
+            throw new runtime.RequiredError(
+                'planUpdate',
+                'Required parameter "planUpdate" was null or undefined when calling updatePlanApiPlansPlanIdPatch().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/plans/{plan_id}`;
+        urlPath = urlPath.replace(`{${"plan_id"}}`, encodeURIComponent(String(requestParameters['planId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'PATCH',
+            headers: headerParameters,
+            query: queryParameters,
+            body: PlanUpdateToJSON(requestParameters['planUpdate']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => PlanOutFromJSON(jsonValue));
+    }
+
+    /**
+     * Update a plan\'s properties.
+     * Update Plan
+     */
+    async updatePlanApiPlansPlanIdPatch(requestParameters: UpdatePlanApiPlansPlanIdPatchRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PlanOut> {
+        const response = await this.updatePlanApiPlansPlanIdPatchRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

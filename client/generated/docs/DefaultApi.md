@@ -5,16 +5,23 @@ All URIs are relative to *http://localhost*
 | Method | HTTP request | Description |
 |------------- | ------------- | -------------|
 | [**addTaskApiTasksPost**](DefaultApi.md#addtaskapitaskspost) | **POST** /api/tasks | Add Task |
+| [**createPlanApiPlansPost**](DefaultApi.md#createplanapiplanspost) | **POST** /api/plans | Create Plan |
+| [**deletePlanApiPlansPlanIdDelete**](DefaultApi.md#deleteplanapiplansplaniddelete) | **DELETE** /api/plans/{plan_id} | Delete Plan |
+| [**getPlanApiPlansPlanIdGet**](DefaultApi.md#getplanapiplansplanidget) | **GET** /api/plans/{plan_id} | Get Plan |
+| [**getStateApiStateGet**](DefaultApi.md#getstateapistateget) | **GET** /api/state | Get State |
 | [**getTaskApiTasksTaskIdGet**](DefaultApi.md#gettaskapitaskstaskidget) | **GET** /api/tasks/{task_id} | Get Task |
 | [**healthHealthGet**](DefaultApi.md#healthhealthget) | **GET** /health | Health |
 | [**initDbApiInitPost**](DefaultApi.md#initdbapiinitpost) | **POST** /api/init | Init Db |
 | [**linkTasksApiLinksPost**](DefaultApi.md#linktasksapilinkspost) | **POST** /api/links | Link Tasks |
+| [**listPlansApiPlansGet**](DefaultApi.md#listplansapiplansget) | **GET** /api/plans | List Plans |
 | [**listTasksApiTasksGet**](DefaultApi.md#listtasksapitasksget) | **GET** /api/tasks | List Tasks |
 | [**removeTaskApiTasksTaskIdDelete**](DefaultApi.md#removetaskapitaskstaskiddelete) | **DELETE** /api/tasks/{task_id} | Remove Task |
 | [**renameTaskApiTasksTaskIdRenamePost**](DefaultApi.md#renametaskapitaskstaskidrenamepost) | **POST** /api/tasks/{task_id}/rename | Rename Task |
 | [**setTaskApiTasksTaskIdPatch**](DefaultApi.md#settaskapitaskstaskidpatch) | **PATCH** /api/tasks/{task_id} | Set Task |
+| [**subscribeStateApiStateSubscribeGet**](DefaultApi.md#subscribestateapistatesubscribeget) | **GET** /api/state/subscribe | Subscribe State |
 | [**subscribeTasksApiTasksSubscribeGet**](DefaultApi.md#subscribetasksapitaskssubscribeget) | **GET** /api/tasks/subscribe | Subscribe Tasks |
 | [**unlinkTasksApiLinksDelete**](DefaultApi.md#unlinktasksapilinksdelete) | **DELETE** /api/links | Unlink Tasks |
+| [**updatePlanApiPlansPlanIdPatch**](DefaultApi.md#updateplanapiplansplanidpatch) | **PATCH** /api/plans/{plan_id} | Update Plan |
 
 
 
@@ -82,6 +89,269 @@ No authorization required
 |-------------|-------------|------------------|
 | **200** | Successful Response |  -  |
 | **422** | Validation Error |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## createPlanApiPlansPost
+
+> PlanOut createPlanApiPlansPost(planCreate)
+
+Create Plan
+
+Create a new plan.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { CreatePlanApiPlansPostRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // PlanCreate
+    planCreate: ...,
+  } satisfies CreatePlanApiPlansPostRequest;
+
+  try {
+    const data = await api.createPlanApiPlansPost(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **planCreate** | [PlanCreate](PlanCreate.md) |  | |
+
+### Return type
+
+[**PlanOut**](PlanOut.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | Successful Response |  -  |
+| **422** | Validation Error |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## deletePlanApiPlansPlanIdDelete
+
+> OperationResult deletePlanApiPlansPlanIdDelete(planId)
+
+Delete Plan
+
+Delete a plan.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { DeletePlanApiPlansPlanIdDeleteRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    planId: planId_example,
+  } satisfies DeletePlanApiPlansPlanIdDeleteRequest;
+
+  try {
+    const data = await api.deletePlanApiPlansPlanIdDelete(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **planId** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**OperationResult**](OperationResult.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | Successful Response |  -  |
+| **422** | Validation Error |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## getPlanApiPlansPlanIdGet
+
+> PlanOut getPlanApiPlansPlanIdGet(planId)
+
+Get Plan
+
+Get a single plan with its steps.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { GetPlanApiPlansPlanIdGetRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    planId: planId_example,
+  } satisfies GetPlanApiPlansPlanIdGetRequest;
+
+  try {
+    const data = await api.getPlanApiPlansPlanIdGet(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **planId** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**PlanOut**](PlanOut.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | Successful Response |  -  |
+| **422** | Validation Error |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## getStateApiStateGet
+
+> AppState getStateApiStateGet()
+
+Get State
+
+Get current complete application state (one-shot).
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { GetStateApiStateGetRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  try {
+    const data = await api.getStateApiStateGet();
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+This endpoint does not need any parameter.
+
+### Return type
+
+[**AppState**](AppState.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | Successful Response |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
@@ -336,6 +606,65 @@ No authorization required
 |-------------|-------------|------------------|
 | **200** | Successful Response |  -  |
 | **422** | Validation Error |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## listPlansApiPlansGet
+
+> PlanListOut listPlansApiPlansGet()
+
+List Plans
+
+List all plans with their steps.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { ListPlansApiPlansGetRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  try {
+    const data = await api.listPlansApiPlansGet();
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+This endpoint does not need any parameter.
+
+### Return type
+
+[**PlanListOut**](PlanListOut.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | Successful Response |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
@@ -609,13 +938,72 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## subscribeStateApiStateSubscribeGet
+
+> any subscribeStateApiStateSubscribeGet()
+
+Subscribe State
+
+Subscribe to real-time state updates via SSE.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { SubscribeStateApiStateSubscribeGetRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  try {
+    const data = await api.subscribeStateApiStateSubscribeGet();
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+This endpoint does not need any parameter.
+
+### Return type
+
+**any**
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | Successful Response |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## subscribeTasksApiTasksSubscribeGet
 
 > any subscribeTasksApiTasksSubscribeGet()
 
 Subscribe Tasks
 
-Subscribe to real-time task updates via SSE.
+Subscribe to real-time task updates via SSE (deprecated - use /state/subscribe).
 
 ### Example
 
@@ -716,6 +1104,77 @@ example().catch(console.error);
 ### Return type
 
 [**OperationResult**](OperationResult.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | Successful Response |  -  |
+| **422** | Validation Error |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## updatePlanApiPlansPlanIdPatch
+
+> PlanOut updatePlanApiPlansPlanIdPatch(planId, planUpdate)
+
+Update Plan
+
+Update a plan\&#39;s properties.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { UpdatePlanApiPlansPlanIdPatchRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    planId: planId_example,
+    // PlanUpdate
+    planUpdate: ...,
+  } satisfies UpdatePlanApiPlansPlanIdPatchRequest;
+
+  try {
+    const data = await api.updatePlanApiPlansPlanIdPatch(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **planId** | `string` |  | [Defaults to `undefined`] |
+| **planUpdate** | [PlanUpdate](PlanUpdate.md) |  | |
+
+### Return type
+
+[**PlanOut**](PlanOut.md)
 
 ### Authorization
 
