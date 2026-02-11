@@ -290,4 +290,6 @@ async def init_db():
         session.execute_write(services.prime_tokens)
     with get_session() as session:
         session.execute_write(services.migrate_dependency_ids)
-    return OperationResult(success=True, message="Database initialized")
+    with get_session() as session:
+        session.execute_write(services.migrate_to_boolean_graph)
+    return OperationResult(success=True, message="Database initialized and migrated")
