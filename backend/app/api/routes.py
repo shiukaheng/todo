@@ -185,17 +185,23 @@ async def add_task(req: TaskCreate):
 async def set_task(task_id: str, req: TaskUpdate):
     """Update a task's properties."""
     logger.debug(f"Updating task {task_id} with node_type={req.node_type}")
-    node_type_value = req.node_type.value if req.node_type else None
+    # Use model_dump to get only fields that were explicitly set
+    update_data = req.model_dump(exclude_unset=True)
+
+    # Build kwargs for update_node with only provided fields
+    kwargs = {'id': task_id}
+    if 'node_type' in update_data:
+        kwargs['node_type'] = req.node_type.value if req.node_type else None
+    if 'text' in update_data:
+        kwargs['text'] = req.text
+    if 'completed' in update_data:
+        kwargs['completed'] = req.completed
+    if 'due' in update_data:
+        kwargs['due'] = req.due  # Can be None to clear, or int to set
+
     with get_session() as session:
         found = session.execute_write(
-            lambda tx: services.update_node(
-                tx,
-                id=task_id,
-                node_type=node_type_value,
-                text=req.text,
-                completed=req.completed,
-                due=req.due,
-            )
+            lambda tx: services.update_node(tx, **kwargs)
         )
 
     if not found:

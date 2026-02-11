@@ -311,13 +311,15 @@ def add_node(
     )
 
 
+_UNSET = object()  # Sentinel value to distinguish "not provided" from "None"
+
 def update_node(
     tx,
     id: str,
     node_type: str | None = None,
     text: str | None = None,
     completed: bool | None = None,
-    due: int | None = None,
+    due: int | None | object = _UNSET,
 ) -> bool:
     """Update an existing node. Returns True if found."""
     now = int(time.time())
@@ -397,8 +399,14 @@ def update_node(
         props["text"] = text
     if completed is not None:
         props["completed"] = completed
-    if due is not None:
-        props["due"] = due
+    # Handle due: distinguish between not provided (_UNSET), explicitly None (clear), or a value
+    if due is not _UNSET:
+        if due is None:
+            # Explicitly clearing due - we'll need to remove it separately
+            # For now, set to null in Neo4j (which removes the property)
+            props["due"] = None
+        else:
+            props["due"] = due
 
     if props:
         props["updated_at"] = now
