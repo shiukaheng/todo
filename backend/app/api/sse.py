@@ -1,4 +1,4 @@
-"""SSE subscription manager for real-time task updates."""
+"""SSE subscription manager for real-time application state updates."""
 from __future__ import annotations
 
 import asyncio
@@ -18,7 +18,7 @@ class SSEPublisher:
         self._lock = asyncio.Lock()
 
     async def subscribe(self) -> AsyncGenerator[dict, None]:
-        """Subscribe to task updates. Yields SSE-formatted events."""
+        """Subscribe to application state updates. Yields SSE-formatted events."""
         queue: asyncio.Queue = asyncio.Queue()
 
         async with self._lock:
@@ -52,9 +52,13 @@ class SSEPublisher:
                     pass  # Skip slow clients
 
     def _get_current_state(self) -> dict:
-        """Get current task list state matching NodeListOut schema."""
+        """Get current application state matching AppState schema."""
         with get_session() as session:
+            # Get graph data
             nodes, dependencies, has_cycles = session.execute_read(services.list_nodes)
+
+            # Get plans
+            plans = session.execute_read(services.list_plans)
 
         # Build parent/child lookup: node_id -> list of dependency IDs
         # Edge: from_id -[DEPENDS_ON]-> to_id means from_id depends on to_id
@@ -65,6 +69,27 @@ class SSEPublisher:
         for dep in dependencies:
             parents_map.setdefault(dep.to_id, []).append(dep.id)
             children_map.setdefault(dep.from_id, []).append(dep.id)
+
+        # Build plans dict with steps
+        plans_dict = {}
+        with get_session() as session:
+            for plan in plans:
+                steps = session.execute_read(
+                    lambda tx: services._get_plan_steps(tx, plan.id)
+                )
+                plans_dict[plan.id] = {
+                    "id": plan.id,
+                    "text": plan.text,
+                    "created_at": plan.created_at,
+                    "updated_at": plan.updated_at,
+                    "steps": [
+                        {
+                            "node_id": step.node_id,
+                            "order": step.order,
+                        }
+                        for step in steps
+                    ],
+                }
 
         return {
             "tasks": {
@@ -94,6 +119,7 @@ class SSEPublisher:
                 for dep in dependencies
             },
             "has_cycles": has_cycles,
+            "plans": plans_dict,
         }
 
 

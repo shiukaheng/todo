@@ -86,6 +86,57 @@ class OperationResult(BaseModel):
     message: str | None = None
 
 
+# ============================================================================
+# Plan Models
+# ============================================================================
+
+
+class StepData(BaseModel):
+    """Step in a plan."""
+    node_id: str
+    order: float
+
+
+class PlanCreate(BaseModel):
+    """Create a plan with steps."""
+    id: str
+    text: str | None = None
+    steps: list[StepData] = []
+
+
+class PlanUpdate(BaseModel):
+    """Update a plan (text and/or steps)."""
+    text: str | None = None
+    steps: list[StepData] | None = None
+
+
+class PlanOut(BaseModel):
+    """Plan response."""
+    id: str
+    text: str | None
+    created_at: int
+    updated_at: int
+    steps: list[StepData]
+
+
+class PlanListOut(BaseModel):
+    """All plans."""
+    plans: dict[str, PlanOut]
+
+
+# ============================================================================
+# Combined State (for /state endpoint and subscription)
+# ============================================================================
+
+
+class AppState(BaseModel):
+    """Complete application state (graph + plans)."""
+    tasks: dict[str, NodeOut]
+    dependencies: dict[str, DependencyOut]
+    has_cycles: bool
+    plans: dict[str, PlanOut]
+
+
 # Backward compatibility aliases (optional)
 TaskCreate = NodeCreate
 TaskUpdate = NodeUpdate

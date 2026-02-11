@@ -20,6 +20,12 @@ from app.models import (
     LinkRequest,
     RenameRequest,
     OperationResult,
+    PlanCreate,
+    PlanUpdate,
+    PlanOut,
+    PlanListOut,
+    StepData,
+    AppState,
 )
 from app.api.sse import publisher
 
@@ -52,14 +58,98 @@ def _dep_to_out(dep: services.Dependency) -> DependencyOut:
     )
 
 
+def _step_to_data(step: services.Step) -> StepData:
+    """Convert Step to StepData."""
+    return StepData(
+        node_id=step.node_id,
+        order=step.order,
+    )
+
+
+def _plan_to_out(plan: services.Plan, steps: list[services.Step]) -> PlanOut:
+    """Convert Plan to Pydantic model."""
+    return PlanOut(
+        id=plan.id,
+        text=plan.text,
+        created_at=plan.created_at or 0,
+        updated_at=plan.updated_at or 0,
+        steps=[_step_to_data(s) for s in steps],
+    )
+
+
+# ============================================================================
+# State endpoints
+# ============================================================================
+
+
+@router.get("/state", response_model=AppState)
+async def get_state():
+    """Get current complete application state (one-shot)."""
+    with get_session() as session:
+        # Get graph data
+        nodes, dependencies, has_cycles = session.execute_read(services.list_nodes)
+
+        # Build parent/child lookup
+        parents_map: dict[str, list[str]] = {}
+        children_map: dict[str, list[str]] = {}
+        for dep in dependencies:
+            parents_map.setdefault(dep.to_id, []).append(dep.id)
+            children_map.setdefault(dep.from_id, []).append(dep.id)
+
+        # Get plans
+        plans = session.execute_read(services.list_plans)
+
+    # Build tasks dict
+    tasks_out = {}
+    for t in nodes:
+        tasks_out[t.node.id] = TaskOut(
+            id=t.node.id,
+            text=t.node.text,
+            node_type=t.node.node_type,
+            completed=t.node.completed,
+            due=t.node.due,
+            created_at=t.node.created_at,
+            updated_at=t.node.updated_at,
+            calculated_value=t.calculated_value,
+            calculated_due=t.calculated_due,
+            deps_clear=t.deps_clear,
+            is_actionable=t.is_actionable,
+            parents=parents_map.get(t.node.id, []),
+            children=children_map.get(t.node.id, []),
+        )
+
+    # Build plans dict
+    plans_out = {}
+    with get_session() as session:
+        for plan in plans:
+            steps = session.execute_read(
+                lambda tx: services._get_plan_steps(tx, plan.id)
+            )
+            plans_out[plan.id] = _plan_to_out(plan, steps)
+
+    return AppState(
+        tasks=tasks_out,
+        dependencies={d.id: _dep_to_out(d) for d in dependencies},
+        has_cycles=has_cycles,
+        plans=plans_out,
+    )
+
+
 # ============================================================================
 # SSE Subscription (must be before /tasks/{task_id} to avoid path conflict)
 # ============================================================================
 
 
+@router.get("/state/subscribe")
+async def subscribe_state():
+    """Subscribe to real-time state updates via SSE."""
+    return EventSourceResponse(publisher.subscribe())
+
+
 @router.get("/tasks/subscribe")
 async def subscribe_tasks():
-    """Subscribe to real-time task updates via SSE."""
+    """Subscribe to real-time task updates via SSE (deprecated - use /state/subscribe)."""
+    logger.warning("Deprecated: /tasks/subscribe - use /state/subscribe instead")
     return EventSourceResponse(publisher.subscribe())
 
 
@@ -293,3 +383,124 @@ async def init_db():
     with get_session() as session:
         session.execute_write(services.migrate_to_boolean_graph)
     return OperationResult(success=True, message="Database initialized and migrated")
+
+
+# ============================================================================
+# Plans
+# ============================================================================
+
+
+@router.get("/plans", response_model=PlanListOut)
+async def list_plans():
+    """List all plans with their steps."""
+    with get_session() as session:
+        plans = session.execute_read(services.list_plans)
+
+    # Get steps for each plan
+    plans_out = {}
+    with get_session() as session:
+        for plan in plans:
+            steps = session.execute_read(
+                lambda tx: services._get_plan_steps(tx, plan.id)
+            )
+            plans_out[plan.id] = _plan_to_out(plan, steps)
+
+    return PlanListOut(plans=plans_out)
+
+
+@router.get("/plans/{plan_id}", response_model=PlanOut)
+async def get_plan(plan_id: str):
+    """Get a single plan with its steps."""
+    with get_session() as session:
+        plan = session.execute_read(
+            lambda tx: services.get_plan(tx, plan_id)
+        )
+        if not plan:
+            raise HTTPException(status_code=404, detail=f"Plan '{plan_id}' not found")
+
+        steps = session.execute_read(
+            lambda tx: services._get_plan_steps(tx, plan_id)
+        )
+
+    return _plan_to_out(plan, steps)
+
+
+@router.post("/plans", response_model=PlanOut)
+async def create_plan(req: PlanCreate):
+    """Create a new plan."""
+    try:
+        # Convert StepData to tuples for service layer
+        steps_tuples = [(s.node_id, s.order) for s in req.steps] if req.steps else None
+
+        with get_session() as session:
+            plan = session.execute_write(
+                lambda tx: services.create_plan(
+                    tx,
+                    id=req.id,
+                    text=req.text,
+                    steps=steps_tuples
+                )
+            )
+
+            # Get steps for response
+            steps = session.execute_read(
+                lambda tx: services._get_plan_steps(tx, req.id)
+            )
+    except ValueError as e:
+        if "already exists" in str(e):
+            raise HTTPException(status_code=409, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e))
+
+    await publisher.broadcast()
+    return _plan_to_out(plan, steps)
+
+
+@router.patch("/plans/{plan_id}", response_model=PlanOut)
+async def update_plan(plan_id: str, req: PlanUpdate):
+    """Update a plan's properties."""
+    # Convert StepData to tuples for service layer
+    steps_tuples = None
+    if req.steps is not None:
+        steps_tuples = [(s.node_id, s.order) for s in req.steps]
+
+    try:
+        with get_session() as session:
+            found = session.execute_write(
+                lambda tx: services.update_plan(
+                    tx,
+                    id=plan_id,
+                    text=req.text,
+                    steps=steps_tuples
+                )
+            )
+
+            if not found:
+                raise HTTPException(status_code=404, detail=f"Plan '{plan_id}' not found")
+
+            # Get updated plan for response
+            plan = session.execute_read(
+                lambda tx: services.get_plan(tx, plan_id)
+            )
+            steps = session.execute_read(
+                lambda tx: services._get_plan_steps(tx, plan_id)
+            )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    await publisher.broadcast()
+    return _plan_to_out(plan, steps)
+
+
+@router.delete("/plans/{plan_id}", response_model=OperationResult)
+async def delete_plan(plan_id: str):
+    """Delete a plan."""
+    with get_session() as session:
+        found = session.execute_write(
+            lambda tx: services.delete_plan(tx, plan_id)
+        )
+
+    if not found:
+        raise HTTPException(status_code=404, detail=f"Plan '{plan_id}' not found")
+
+    await publisher.broadcast()
+    return OperationResult(success=True, message=f"Deleted plan '{plan_id}'")

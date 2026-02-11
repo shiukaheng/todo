@@ -44,6 +44,23 @@ class Dependency:
     to_id: str
 
 
+@dataclass
+class Plan:
+    """Plan data (organizational layer, not part of Node graph)."""
+    id: str
+    text: str | None = None
+    created_at: int | None = None
+    updated_at: int | None = None
+
+
+@dataclass
+class Step:
+    """Step in a plan (STEP relationship)."""
+    id: str
+    order: float
+    node_id: str
+
+
 # ============================================================================
 # Helper functions
 # ============================================================================
@@ -610,10 +627,22 @@ def init_db(tx) -> None:
     # Drop old constraint
     tx.run("DROP CONSTRAINT task_id_unique IF EXISTS")
 
-    # Create new constraint
+    # Create node constraints
     tx.run(
         "CREATE CONSTRAINT node_id_unique IF NOT EXISTS "
         "FOR (n:Node) REQUIRE n.id IS UNIQUE"
+    )
+
+    # Create plan constraints
+    tx.run(
+        "CREATE CONSTRAINT plan_id_unique IF NOT EXISTS "
+        "FOR (p:Plan) REQUIRE p.id IS UNIQUE"
+    )
+
+    # Create relationship constraints
+    tx.run(
+        "CREATE CONSTRAINT step_id_unique IF NOT EXISTS "
+        "FOR ()-[r:STEP]->() REQUIRE r.id IS UNIQUE"
     )
 
 
@@ -738,3 +767,178 @@ def unlink_tasks(*args, **kwargs):
         stacklevel=2
     )
     return unlink_nodes(*args, **kwargs)
+
+
+# ============================================================================
+# Plan operations (separate from Node graph)
+# ============================================================================
+
+
+def _get_plan_steps(tx, plan_id: str) -> list[Step]:
+    """Get all steps for a plan, ordered by order field."""
+    result = tx.run(
+        "MATCH (p:Plan {id: $plan_id})-[s:STEP]->(n:Node) "
+        "RETURN s.id AS id, s.order AS order, n.id AS node_id "
+        "ORDER BY s.order ASC",
+        plan_id=plan_id
+    )
+    return [
+        Step(
+            id=record["id"],
+            order=record["order"],
+            node_id=record["node_id"]
+        )
+        for record in result
+    ]
+
+
+def _set_plan_steps(tx, plan_id: str, steps: list[tuple[str, float]]) -> None:
+    """Replace all steps for a plan. steps = [(node_id, order), ...]"""
+    # Delete existing steps
+    tx.run(
+        "MATCH (p:Plan {id: $plan_id})-[s:STEP]->() DELETE s",
+        plan_id=plan_id
+    )
+
+    # Create new steps
+    for node_id, order in steps:
+        # Verify node exists
+        node_exists = tx.run(
+            "MATCH (n:Node {id: $node_id}) RETURN n.id AS id",
+            node_id=node_id
+        ).single()
+        if not node_exists:
+            raise ValueError(f"Node not found: {node_id}")
+
+        # Create step
+        step_id = str(uuid.uuid4())
+        tx.run(
+            "MATCH (p:Plan {id: $plan_id}), (n:Node {id: $node_id}) "
+            "CREATE (p)-[:STEP {id: $step_id, order: $order}]->(n)",
+            plan_id=plan_id,
+            node_id=node_id,
+            step_id=step_id,
+            order=order
+        )
+
+
+def list_plans(tx) -> list[Plan]:
+    """List all plans with their steps."""
+    result = tx.run(
+        "MATCH (p:Plan) "
+        "RETURN p.id AS id, p.text AS text, p.created_at AS created_at, p.updated_at AS updated_at "
+        "ORDER BY p.updated_at DESC"
+    )
+
+    plans = []
+    for record in result:
+        plan = Plan(
+            id=record["id"],
+            text=record["text"],
+            created_at=record["created_at"],
+            updated_at=record["updated_at"]
+        )
+        plans.append(plan)
+
+    return plans
+
+
+def get_plan(tx, plan_id: str) -> Plan | None:
+    """Get a single plan."""
+    result = tx.run(
+        "MATCH (p:Plan {id: $id}) "
+        "RETURN p.id AS id, p.text AS text, p.created_at AS created_at, p.updated_at AS updated_at",
+        id=plan_id
+    )
+    record = result.single()
+    if not record:
+        return None
+
+    return Plan(
+        id=record["id"],
+        text=record["text"],
+        created_at=record["created_at"],
+        updated_at=record["updated_at"]
+    )
+
+
+def create_plan(
+    tx,
+    id: str,
+    text: str | None = None,
+    steps: list[tuple[str, float]] | None = None
+) -> Plan:
+    """Create a new plan. Returns the created plan."""
+    now = int(time.time())
+
+    # Check if plan already exists
+    existing = tx.run("MATCH (p:Plan {id: $id}) RETURN p", id=id).single()
+    if existing:
+        raise ValueError(f"Plan '{id}' already exists")
+
+    # Create plan
+    props = {
+        "id": id,
+        "created_at": now,
+        "updated_at": now,
+    }
+    if text is not None:
+        props["text"] = text
+
+    tx.run("CREATE (p:Plan $props)", props=props)
+
+    # Add steps if provided
+    if steps:
+        _set_plan_steps(tx, id, steps)
+
+    return Plan(
+        id=id,
+        text=text,
+        created_at=now,
+        updated_at=now
+    )
+
+
+def update_plan(
+    tx,
+    id: str,
+    text: str | None = None,
+    steps: list[tuple[str, float]] | None = None
+) -> bool:
+    """Update a plan. Returns True if found, False otherwise."""
+    now = int(time.time())
+
+    # Check if plan exists
+    result = tx.run("MATCH (p:Plan {id: $id}) RETURN p", id=id)
+    if not result.single():
+        return False
+
+    # Update text if provided
+    if text is not None:
+        tx.run(
+            "MATCH (p:Plan {id: $id}) SET p.text = $text, p.updated_at = $now",
+            id=id,
+            text=text,
+            now=now
+        )
+
+    # Update steps if provided
+    if steps is not None:
+        _set_plan_steps(tx, id, steps)
+        # Update timestamp
+        tx.run(
+            "MATCH (p:Plan {id: $id}) SET p.updated_at = $now",
+            id=id,
+            now=now
+        )
+
+    return True
+
+
+def delete_plan(tx, id: str) -> bool:
+    """Delete a plan (steps are deleted via cascade, nodes are NOT deleted). Returns True if found."""
+    result = tx.run(
+        "MATCH (p:Plan {id: $id}) DETACH DELETE p RETURN count(p) AS n",
+        id=id
+    )
+    return result.single()["n"] > 0
