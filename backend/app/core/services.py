@@ -313,6 +313,47 @@ def add_node(
 
 _UNSET = object()  # Sentinel value to distinguish "not provided" from "None"
 
+
+def _propagate_uncompletion(tx, task_id: str, now: int) -> list[str]:
+    """
+    Recursively uncomplete all dependent tasks (parents) that are currently marked as complete.
+
+    When a task is marked incomplete, any task that depends on it should also be marked
+    incomplete to maintain consistency between calculated_value and the completed flag.
+
+    Returns list of task IDs that were updated.
+    """
+    updated_ids = []
+
+    # Find all tasks that directly depend on this task (parents in dependency tree)
+    result = tx.run(
+        """
+        MATCH (target:Node {id: $task_id})<-[:DEPENDS_ON]-(parent:Task)
+        WHERE parent.completed = true
+        RETURN parent.id AS parent_id
+        """,
+        task_id=task_id
+    )
+
+    dependent_ids = [record["parent_id"] for record in result]
+
+    # Recursively uncomplete each dependent task
+    for dep_id in dependent_ids:
+        # Mark this dependent as incomplete
+        tx.run(
+            "MATCH (n:Task {id: $id}) SET n.completed = false, n.updated_at = $now",
+            id=dep_id,
+            now=now
+        )
+        updated_ids.append(dep_id)
+
+        # Recursively propagate to its dependents
+        child_updates = _propagate_uncompletion(tx, dep_id, now)
+        updated_ids.extend(child_updates)
+
+    return updated_ids
+
+
 def update_node(
     tx,
     id: str,
@@ -393,6 +434,22 @@ def update_node(
 
             logger.debug(f"Node type changed successfully: {current_type} -> {node_type}")
 
+    # Check if we're marking a task as incomplete (for propagation)
+    propagate_uncompletion = False
+    if completed is not None and not completed:
+        # Query current state to see if we're transitioning from complete to incomplete
+        # Only Task nodes have completed property, so check node type
+        result = tx.run(
+            "MATCH (n:Node {id: $id}) "
+            "WHERE 'Task' IN labels(n) AND n.completed = true "
+            "RETURN n.completed AS current_completed",
+            id=id
+        )
+        record = result.single()
+        if record:
+            # We're transitioning from complete to incomplete - need to propagate
+            propagate_uncompletion = True
+
     # Update other properties
     props = {}
     if text is not None:
@@ -414,7 +471,14 @@ def update_node(
             "MATCH (n:Node {id: $id}) SET n += $props RETURN n",
             id=id, props=props
         )
-        return result.single() is not None
+        if result.single() is None:
+            return False
+
+    # Propagate uncompletion to dependent tasks if needed
+    if propagate_uncompletion:
+        updated_ids = _propagate_uncompletion(tx, id, now)
+        if updated_ids:
+            logger.debug(f"Propagated uncompletion from {id} to {len(updated_ids)} dependent task(s): {updated_ids}")
 
     return True
 
