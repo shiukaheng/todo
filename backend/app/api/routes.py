@@ -504,3 +504,18 @@ async def delete_plan(plan_id: str):
 
     await publisher.broadcast()
     return OperationResult(success=True, message=f"Deleted plan '{plan_id}'")
+
+
+@router.post("/plans/{plan_id}/rename", response_model=OperationResult)
+async def rename_plan(plan_id: str, req: RenameRequest):
+    """Rename a plan (change its ID)."""
+    try:
+        with get_session() as session:
+            session.execute_write(
+                lambda tx: services.rename_plan(tx, plan_id, req.new_id)
+            )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    await publisher.broadcast()
+    return OperationResult(success=True, message=f"Renamed plan '{plan_id}' to '{req.new_id}'")

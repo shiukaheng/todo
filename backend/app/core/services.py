@@ -960,3 +960,20 @@ def delete_plan(tx, id: str) -> bool:
         id=id
     )
     return result.single()["n"] > 0
+
+
+def rename_plan(tx, old_id: str, new_id: str) -> None:
+    """Rename a plan. Raises if old not found or new already exists."""
+    if old_id == new_id:
+        raise ValueError("Old and new IDs are the same")
+
+    # Check new ID doesn't exist
+    if tx.run("MATCH (p:Plan {id: $id}) RETURN p", id=new_id).single():
+        raise ValueError(f"Plan '{new_id}' already exists")
+
+    result = tx.run(
+        "MATCH (p:Plan {id: $old_id}) SET p.id = $new_id, p.updated_at = $now RETURN p",
+        old_id=old_id, new_id=new_id, now=int(time.time())
+    )
+    if not result.single():
+        raise ValueError(f"Plan '{old_id}' not found")
