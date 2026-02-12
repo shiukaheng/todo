@@ -16,6 +16,7 @@ All URIs are relative to *http://localhost*
 | [**listPlansApiPlansGet**](DefaultApi.md#listplansapiplansget) | **GET** /api/plans | List Plans |
 | [**listTasksApiTasksGet**](DefaultApi.md#listtasksapitasksget) | **GET** /api/tasks | List Tasks |
 | [**removeTaskApiTasksTaskIdDelete**](DefaultApi.md#removetaskapitaskstaskiddelete) | **DELETE** /api/tasks/{task_id} | Remove Task |
+| [**renamePlanApiPlansPlanIdRenamePost**](DefaultApi.md#renameplanapiplansplanidrenamepost) | **POST** /api/plans/{plan_id}/rename | Rename Plan |
 | [**renameTaskApiTasksTaskIdRenamePost**](DefaultApi.md#renametaskapitaskstaskidrenamepost) | **POST** /api/tasks/{task_id}/rename | Rename Task |
 | [**setTaskApiTasksTaskIdPatch**](DefaultApi.md#settaskapitaskstaskidpatch) | **PATCH** /api/tasks/{task_id} | Set Task |
 | [**subscribeStateApiStateSubscribeGet**](DefaultApi.md#subscribestateapistatesubscribeget) | **GET** /api/state/subscribe | Subscribe State |
@@ -784,6 +785,77 @@ No authorization required
 ### HTTP request headers
 
 - **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | Successful Response |  -  |
+| **422** | Validation Error |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## renamePlanApiPlansPlanIdRenamePost
+
+> OperationResult renamePlanApiPlansPlanIdRenamePost(planId, renameRequest)
+
+Rename Plan
+
+Rename a plan (change its ID).
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { RenamePlanApiPlansPlanIdRenamePostRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    planId: planId_example,
+    // RenameRequest
+    renameRequest: ...,
+  } satisfies RenamePlanApiPlansPlanIdRenamePostRequest;
+
+  try {
+    const data = await api.renamePlanApiPlansPlanIdRenamePost(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **planId** | `string` |  | [Defaults to `undefined`] |
+| **renameRequest** | [RenameRequest](RenameRequest.md) |  | |
+
+### Return type
+
+[**OperationResult**](OperationResult.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: `application/json`
 - **Accept**: `application/json`
 
 

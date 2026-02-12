@@ -89,6 +89,11 @@ export interface RemoveTaskApiTasksTaskIdDeleteRequest {
     taskId: string;
 }
 
+export interface RenamePlanApiPlansPlanIdRenamePostRequest {
+    planId: string;
+    renameRequest: RenameRequest;
+}
+
 export interface RenameTaskApiTasksTaskIdRenamePostRequest {
     taskId: string;
     renameRequest: RenameRequest;
@@ -548,6 +553,55 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async removeTaskApiTasksTaskIdDelete(requestParameters: RemoveTaskApiTasksTaskIdDeleteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<OperationResult> {
         const response = await this.removeTaskApiTasksTaskIdDeleteRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Rename a plan (change its ID).
+     * Rename Plan
+     */
+    async renamePlanApiPlansPlanIdRenamePostRaw(requestParameters: RenamePlanApiPlansPlanIdRenamePostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<OperationResult>> {
+        if (requestParameters['planId'] == null) {
+            throw new runtime.RequiredError(
+                'planId',
+                'Required parameter "planId" was null or undefined when calling renamePlanApiPlansPlanIdRenamePost().'
+            );
+        }
+
+        if (requestParameters['renameRequest'] == null) {
+            throw new runtime.RequiredError(
+                'renameRequest',
+                'Required parameter "renameRequest" was null or undefined when calling renamePlanApiPlansPlanIdRenamePost().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/plans/{plan_id}/rename`;
+        urlPath = urlPath.replace(`{${"plan_id"}}`, encodeURIComponent(String(requestParameters['planId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: RenameRequestToJSON(requestParameters['renameRequest']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => OperationResultFromJSON(jsonValue));
+    }
+
+    /**
+     * Rename a plan (change its ID).
+     * Rename Plan
+     */
+    async renamePlanApiPlansPlanIdRenamePost(requestParameters: RenamePlanApiPlansPlanIdRenamePostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<OperationResult> {
+        const response = await this.renamePlanApiPlansPlanIdRenamePostRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
