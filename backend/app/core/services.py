@@ -645,6 +645,12 @@ def init_db(tx) -> None:
         "FOR ()-[r:STEP]->() REQUIRE r.id IS UNIQUE"
     )
 
+    # Note: In Neo4j Enterprise, we could add a constraint to prevent
+    # duplicate STEP relationships from a Plan to the same Node:
+    # CREATE CONSTRAINT plan_unique_steps IF NOT EXISTS
+    # FOR (p:Plan)-[s:STEP]->(n:Node) REQUIRE (p, n) IS UNIQUE
+    # For Community Edition, this is enforced in Python code instead.
+
 
 def migrate_to_boolean_graph(tx) -> None:
     """Migrate existing Task nodes to boolean graph schema."""
@@ -794,6 +800,18 @@ def _get_plan_steps(tx, plan_id: str) -> list[Step]:
 
 def _set_plan_steps(tx, plan_id: str, steps: list[tuple[str, float]]) -> None:
     """Replace all steps for a plan. steps = [(node_id, order), ...]"""
+    # Check for duplicate node_ids
+    node_ids = [node_id for node_id, _ in steps]
+    if len(node_ids) != len(set(node_ids)):
+        # Find the duplicate(s)
+        seen = set()
+        duplicates = []
+        for node_id in node_ids:
+            if node_id in seen:
+                duplicates.append(node_id)
+            seen.add(node_id)
+        raise ValueError(f"Duplicate node(s) in plan: {', '.join(set(duplicates))}")
+
     # Delete existing steps
     tx.run(
         "MATCH (p:Plan {id: $plan_id})-[s:STEP]->() DELETE s",
