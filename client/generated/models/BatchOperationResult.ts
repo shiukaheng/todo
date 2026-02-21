@@ -1,0 +1,66 @@
+/* tslint:disable */
+/* eslint-disable */
+import { mapValues } from '../runtime';
+
+/**
+ * Result of a single operation in a batch.
+ * @export
+ * @interface BatchOperationResult
+ */
+export interface BatchOperationResult {
+    /**
+     *
+     * @type {string}
+     * @memberof BatchOperationResult
+     */
+    op: string;
+    /**
+     *
+     * @type {boolean}
+     * @memberof BatchOperationResult
+     */
+    success: boolean;
+    /**
+     *
+     * @type {string}
+     * @memberof BatchOperationResult
+     */
+    message?: string | null;
+}
+
+export function instanceOfBatchOperationResult(value: object): value is BatchOperationResult {
+    if (!('op' in value) || value['op'] === undefined) return false;
+    if (!('success' in value) || value['success'] === undefined) return false;
+    return true;
+}
+
+export function BatchOperationResultFromJSON(json: any): BatchOperationResult {
+    return BatchOperationResultFromJSONTyped(json, false);
+}
+
+export function BatchOperationResultFromJSONTyped(json: any, ignoreDiscriminator: boolean): BatchOperationResult {
+    if (json == null) {
+        return json;
+    }
+    return {
+        'op': json['op'],
+        'success': json['success'],
+        'message': json['message'] == null ? undefined : json['message'],
+    };
+}
+
+export function BatchOperationResultToJSON(json: any): BatchOperationResult {
+    return BatchOperationResultToJSONTyped(json, false);
+}
+
+export function BatchOperationResultToJSONTyped(value?: BatchOperationResult | null, ignoreDiscriminator: boolean = false): any {
+    if (value == null) {
+        return value;
+    }
+
+    return {
+        'op': value['op'],
+        'success': value['success'],
+        'message': value['message'],
+    };
+}

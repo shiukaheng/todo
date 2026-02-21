@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import asdict
 
 from fastapi import APIRouter, HTTPException
 from sse_starlette.sse import EventSourceResponse
@@ -12,41 +11,31 @@ logger = logging.getLogger(__name__)
 from app.core.db import get_session
 from app.core import services
 from app.models import (
-    TaskCreate,
-    TaskUpdate,
     TaskOut,
     TaskListOut,
     DependencyOut,
-    LinkRequest,
-    RenameRequest,
     OperationResult,
-    PlanCreate,
-    PlanUpdate,
     PlanOut,
     PlanListOut,
     StepData,
     AppState,
+    BatchRequest,
+    BatchOperationResult,
+    BatchResponse,
+    CreateNodeOp,
+    UpdateNodeOp,
+    DeleteNodeOp,
+    RenameNodeOp,
+    LinkOp,
+    UnlinkOp,
+    CreatePlanOp,
+    UpdatePlanOp,
+    DeletePlanOp,
+    RenamePlanOp,
 )
 from app.api.sse import publisher
 
 router = APIRouter()
-
-
-def _enriched_to_out(et: services.EnrichedNode) -> TaskOut:
-    """Convert EnrichedNode to Pydantic model."""
-    return TaskOut(
-        id=et.node.id,
-        text=et.node.text,
-        node_type=et.node.node_type,
-        completed=et.node.completed,
-        due=et.node.due,
-        created_at=et.node.created_at,
-        updated_at=et.node.updated_at,
-        calculated_value=et.calculated_value,
-        calculated_due=et.calculated_due,
-        deps_clear=et.deps_clear,
-        is_actionable=et.is_actionable,
-    )
 
 
 def _dep_to_out(dep: services.Dependency) -> DependencyOut:
@@ -154,7 +143,7 @@ async def subscribe_tasks():
 
 
 # ============================================================================
-# Task CRUD
+# Read-only Task endpoints
 # ============================================================================
 
 
@@ -164,12 +153,8 @@ async def list_tasks():
     with get_session() as session:
         nodes, dependencies, has_cycles = session.execute_read(services.list_nodes)
 
-    # Build parent/child lookup: node_id -> list of dependency IDs
-    # Edge: from_id -[DEPENDS_ON]-> to_id means from_id depends on to_id
-    # parents = high-level goals that depend on this node (things this node blocks)
-    # children = sub-nodes this node depends on (things that block this node)
-    parents_map: dict[str, list[str]] = {}   # to_id -> [dep.id, ...] (things that depend on to_id)
-    children_map: dict[str, list[str]] = {}  # from_id -> [dep.id, ...] (things from_id depends on)
+    parents_map: dict[str, list[str]] = {}
+    children_map: dict[str, list[str]] = {}
     for dep in dependencies:
         parents_map.setdefault(dep.to_id, []).append(dep.id)
         children_map.setdefault(dep.from_id, []).append(dep.id)
@@ -207,10 +192,8 @@ async def get_task(task_id: str):
         )
         if not node:
             raise HTTPException(status_code=404, detail=f"Node '{task_id}' not found")
-        # Get dependencies to build parents/children
         dependencies = session.execute_read(services.list_dependencies)
 
-    # Build parent/child lists for this node
     parents = [d.id for d in dependencies if d.to_id == task_id]
     children = [d.id for d in dependencies if d.from_id == task_id]
 
@@ -231,162 +214,8 @@ async def get_task(task_id: str):
     )
 
 
-@router.post("/tasks", response_model=TaskOut)
-async def add_task(req: TaskCreate):
-    """Create a new task."""
-    try:
-        with get_session() as session:
-            node = session.execute_write(
-                lambda tx: services.add_node(
-                    tx,
-                    id=req.id,
-                    node_type=req.node_type.value if req.node_type else "Task",
-                    text=req.text,
-                    completed=req.completed,
-                    due=req.due,
-                    depends=req.depends,
-                    blocks=req.blocks,
-                )
-            )
-    except Exception as e:
-        if "already exists" in str(e).lower() or "unique" in str(e).lower():
-            raise HTTPException(status_code=409, detail=f"Node '{req.id}' already exists")
-        raise HTTPException(status_code=400, detail=str(e))
-
-    await publisher.broadcast()
-    return TaskOut(
-        id=node.id,
-        text=node.text,
-        node_type=node.node_type,
-        completed=node.completed,
-        due=node.due,
-        created_at=node.created_at,
-        updated_at=node.updated_at,
-        calculated_value=None,
-        calculated_due=None,
-        deps_clear=None,
-        is_actionable=None,
-        parents=[],   # caller should re-fetch if depends/blocks were provided
-        children=[],
-    )
-
-
-@router.patch("/tasks/{task_id}", response_model=OperationResult)
-async def set_task(task_id: str, req: TaskUpdate):
-    """Update a task's properties."""
-    logger.debug(f"Updating task {task_id} with node_type={req.node_type}")
-    # Use model_dump to get only fields that were explicitly set
-    update_data = req.model_dump(exclude_unset=True)
-
-    # Build kwargs for update_node with only provided fields
-    kwargs = {'id': task_id}
-    if 'node_type' in update_data:
-        kwargs['node_type'] = req.node_type.value if req.node_type else None
-    if 'text' in update_data:
-        kwargs['text'] = req.text
-    if 'completed' in update_data:
-        kwargs['completed'] = req.completed
-    if 'due' in update_data:
-        kwargs['due'] = req.due  # Can be None to clear, or int to set
-
-    with get_session() as session:
-        found = session.execute_write(
-            lambda tx: services.update_node(tx, **kwargs)
-        )
-
-    if not found:
-        raise HTTPException(status_code=404, detail=f"Node '{task_id}' not found")
-
-    await publisher.broadcast()
-    return OperationResult(success=True)
-
-
-@router.delete("/tasks/{task_id}", response_model=OperationResult)
-async def remove_task(task_id: str):
-    """Delete a task and its edges."""
-    with get_session() as session:
-        found = session.execute_write(
-            lambda tx: services.remove_node(tx, task_id)
-        )
-
-    if not found:
-        raise HTTPException(status_code=404, detail=f"Node '{task_id}' not found")
-
-    await publisher.broadcast()
-    return OperationResult(success=True, message=f"Deleted node '{task_id}'")
-
-
-@router.post("/tasks/{task_id}/rename", response_model=OperationResult)
-async def rename_task(task_id: str, req: RenameRequest):
-    """Rename a task (change its ID)."""
-    try:
-        with get_session() as session:
-            session.execute_write(
-                lambda tx: services.rename_node(tx, task_id, req.new_id)
-            )
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-    await publisher.broadcast()
-    return OperationResult(success=True, message=f"Renamed '{task_id}' to '{req.new_id}'")
-
-
 # ============================================================================
-# Link/Unlink
-# ============================================================================
-
-
-@router.post("/links", response_model=DependencyOut)
-async def link_tasks(req: LinkRequest):
-    """Create a dependency: from_id depends on to_id."""
-    try:
-        with get_session() as session:
-            dep_id = session.execute_write(
-                lambda tx: services.link_nodes(tx, req.from_id, req.to_id)
-            )
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-    await publisher.broadcast()
-    return DependencyOut(id=dep_id, from_id=req.from_id, to_id=req.to_id)
-
-
-@router.delete("/links", response_model=OperationResult)
-async def unlink_tasks(req: LinkRequest):
-    """Remove a dependency."""
-    with get_session() as session:
-        found = session.execute_write(
-            lambda tx: services.unlink_nodes(tx, req.from_id, req.to_id)
-        )
-
-    if not found:
-        raise HTTPException(status_code=404, detail="Link not found")
-
-    await publisher.broadcast()
-    return OperationResult(success=True, message=f"Removed dependency {req.from_id} -> {req.to_id}")
-
-
-# ============================================================================
-# Admin
-# ============================================================================
-
-
-@router.post("/init", response_model=OperationResult)
-async def init_db():
-    """Initialize the database schema and run migrations."""
-    with get_session() as session:
-        session.execute_write(services.init_db)
-    with get_session() as session:
-        session.execute_write(services.prime_tokens)
-    with get_session() as session:
-        session.execute_write(services.migrate_dependency_ids)
-    with get_session() as session:
-        session.execute_write(services.migrate_to_boolean_graph)
-    return OperationResult(success=True, message="Database initialized and migrated")
-
-
-# ============================================================================
-# Plans
+# Read-only Plan endpoints
 # ============================================================================
 
 
@@ -396,7 +225,6 @@ async def list_plans():
     with get_session() as session:
         plans = session.execute_read(services.list_plans)
 
-    # Get steps for each plan
     plans_out = {}
     with get_session() as session:
         for plan in plans:
@@ -425,97 +253,122 @@ async def get_plan(plan_id: str):
     return _plan_to_out(plan, steps)
 
 
-@router.post("/plans", response_model=PlanOut)
-async def create_plan(req: PlanCreate):
-    """Create a new plan."""
-    try:
-        # Convert StepData to tuples for service layer
-        steps_tuples = [(s.node_id, s.order) for s in req.steps] if req.steps else None
-
-        with get_session() as session:
-            plan = session.execute_write(
-                lambda tx: services.create_plan(
-                    tx,
-                    id=req.id,
-                    text=req.text,
-                    steps=steps_tuples
-                )
-            )
-
-            # Get steps for response
-            steps = session.execute_read(
-                lambda tx: services._get_plan_steps(tx, req.id)
-            )
-    except ValueError as e:
-        if "already exists" in str(e):
-            raise HTTPException(status_code=409, detail=str(e))
-        raise HTTPException(status_code=400, detail=str(e))
-
-    await publisher.broadcast()
-    return _plan_to_out(plan, steps)
+# ============================================================================
+# Admin
+# ============================================================================
 
 
-@router.patch("/plans/{plan_id}", response_model=PlanOut)
-async def update_plan(plan_id: str, req: PlanUpdate):
-    """Update a plan's properties."""
-    # Convert StepData to tuples for service layer
-    steps_tuples = None
-    if req.steps is not None:
-        steps_tuples = [(s.node_id, s.order) for s in req.steps]
-
-    try:
-        with get_session() as session:
-            found = session.execute_write(
-                lambda tx: services.update_plan(
-                    tx,
-                    id=plan_id,
-                    text=req.text,
-                    steps=steps_tuples
-                )
-            )
-
-            if not found:
-                raise HTTPException(status_code=404, detail=f"Plan '{plan_id}' not found")
-
-            # Get updated plan for response
-            plan = session.execute_read(
-                lambda tx: services.get_plan(tx, plan_id)
-            )
-            steps = session.execute_read(
-                lambda tx: services._get_plan_steps(tx, plan_id)
-            )
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-    await publisher.broadcast()
-    return _plan_to_out(plan, steps)
-
-
-@router.delete("/plans/{plan_id}", response_model=OperationResult)
-async def delete_plan(plan_id: str):
-    """Delete a plan."""
+@router.post("/init", response_model=OperationResult)
+async def init_db():
+    """Initialize the database schema and run migrations."""
     with get_session() as session:
-        found = session.execute_write(
-            lambda tx: services.delete_plan(tx, plan_id)
+        session.execute_write(services.init_db)
+    with get_session() as session:
+        session.execute_write(services.prime_tokens)
+    with get_session() as session:
+        session.execute_write(services.migrate_dependency_ids)
+    with get_session() as session:
+        session.execute_write(services.migrate_to_boolean_graph)
+    return OperationResult(success=True, message="Database initialized and migrated")
+
+
+# ============================================================================
+# Batch Operations
+# ============================================================================
+
+
+def _dispatch_operation(tx, op) -> None:
+    """Dispatch a single operation to the appropriate service function."""
+    if isinstance(op, CreateNodeOp):
+        services.add_node(
+            tx,
+            id=op.id,
+            node_type=op.node_type.value if op.node_type else "Task",
+            text=op.text,
+            completed=op.completed,
+            due=op.due,
+            depends=op.depends,
+            blocks=op.blocks,
+        )
+    elif isinstance(op, UpdateNodeOp):
+        update_data = op.model_dump(exclude_unset=True)
+        kwargs: dict = {"id": op.id}
+        if "node_type" in update_data:
+            kwargs["node_type"] = op.node_type.value if op.node_type else None
+        if "text" in update_data:
+            kwargs["text"] = op.text
+        if "completed" in update_data:
+            kwargs["completed"] = op.completed
+        if "due" in update_data:
+            kwargs["due"] = op.due
+        found = services.update_node(tx, **kwargs)
+        if not found:
+            raise ValueError(f"Node '{op.id}' not found")
+    elif isinstance(op, DeleteNodeOp):
+        found = services.remove_node(tx, op.id)
+        if not found:
+            raise ValueError(f"Node '{op.id}' not found")
+    elif isinstance(op, RenameNodeOp):
+        services.rename_node(tx, op.id, op.new_id)
+    elif isinstance(op, LinkOp):
+        services.link_nodes(tx, op.from_id, op.to_id)
+    elif isinstance(op, UnlinkOp):
+        found = services.unlink_nodes(tx, op.from_id, op.to_id)
+        if not found:
+            raise ValueError(f"Link {op.from_id} -> {op.to_id} not found")
+    elif isinstance(op, CreatePlanOp):
+        steps_tuples = [(s.node_id, s.order) for s in op.steps] if op.steps else None
+        services.create_plan(tx, id=op.id, text=op.text, steps=steps_tuples)
+    elif isinstance(op, UpdatePlanOp):
+        steps_tuples = None
+        if op.steps is not None:
+            steps_tuples = [(s.node_id, s.order) for s in op.steps]
+        found = services.update_plan(tx, id=op.id, text=op.text, steps=steps_tuples)
+        if not found:
+            raise ValueError(f"Plan '{op.id}' not found")
+    elif isinstance(op, DeletePlanOp):
+        found = services.delete_plan(tx, op.id)
+        if not found:
+            raise ValueError(f"Plan '{op.id}' not found")
+    elif isinstance(op, RenamePlanOp):
+        services.rename_plan(tx, op.id, op.new_id)
+    else:
+        raise ValueError(f"Unknown operation type: {type(op)}")
+
+
+@router.post("/batch", response_model=BatchResponse)
+async def batch_operations(req: BatchRequest):
+    """Execute multiple operations atomically in a single transaction."""
+    results: list[BatchOperationResult] = []
+
+    def _run_all(tx):
+        for i, op in enumerate(req.operations):
+            try:
+                _dispatch_operation(tx, op)
+                results.append(BatchOperationResult(op=op.op, success=True))
+            except Exception as e:
+                # Record failure for this op
+                results.append(BatchOperationResult(
+                    op=op.op, success=False, message=str(e)
+                ))
+                # Mark remaining ops as skipped
+                for remaining in req.operations[i + 1:]:
+                    results.append(BatchOperationResult(
+                        op=remaining.op, success=False, message="skipped"
+                    ))
+                # Re-raise to trigger transaction rollback
+                raise
+
+    try:
+        with get_session() as session:
+            session.execute_write(_run_all)
+    except Exception:
+        failed = next((r for r in results if not r.success), None)
+        return BatchResponse(
+            success=False,
+            results=results,
+            message=failed.message if failed else "unknown error",
         )
 
-    if not found:
-        raise HTTPException(status_code=404, detail=f"Plan '{plan_id}' not found")
-
     await publisher.broadcast()
-    return OperationResult(success=True, message=f"Deleted plan '{plan_id}'")
-
-
-@router.post("/plans/{plan_id}/rename", response_model=OperationResult)
-async def rename_plan(plan_id: str, req: RenameRequest):
-    """Rename a plan (change its ID)."""
-    try:
-        with get_session() as session:
-            session.execute_write(
-                lambda tx: services.rename_plan(tx, plan_id, req.new_id)
-            )
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-    await publisher.broadcast()
-    return OperationResult(success=True, message=f"Renamed plan '{plan_id}' to '{req.new_id}'")
+    return BatchResponse(success=True, results=results)

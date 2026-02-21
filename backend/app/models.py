@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 from enum import Enum
-from pydantic import BaseModel
+from typing import Annotated, Literal, Union
+
+from pydantic import BaseModel, Field
 
 
 # NEW: Node type enum
@@ -142,3 +144,122 @@ TaskCreate = NodeCreate
 TaskUpdate = NodeUpdate
 TaskOut = NodeOut
 TaskListOut = NodeListOut
+
+
+# ============================================================================
+# Batch Operation Models
+# ============================================================================
+
+
+class CreateNodeOp(BaseModel):
+    """Create a node."""
+    op: Literal["create_node"]
+    id: str
+    text: str | None = None
+    completed: bool = False
+    node_type: NodeType = NodeType.TASK
+    due: int | None = None
+    depends: list[str] | None = None
+    blocks: list[str] | None = None
+
+
+class UpdateNodeOp(BaseModel):
+    """Update a node."""
+    op: Literal["update_node"]
+    id: str
+    text: str | None = None
+    completed: bool | None = None
+    node_type: NodeType | None = None
+    due: int | None = None
+
+
+class DeleteNodeOp(BaseModel):
+    """Delete a node."""
+    op: Literal["delete_node"]
+    id: str
+
+
+class RenameNodeOp(BaseModel):
+    """Rename a node."""
+    op: Literal["rename_node"]
+    id: str
+    new_id: str
+
+
+class LinkOp(BaseModel):
+    """Create a dependency link."""
+    op: Literal["link"]
+    from_id: str
+    to_id: str
+
+
+class UnlinkOp(BaseModel):
+    """Remove a dependency link."""
+    op: Literal["unlink"]
+    from_id: str
+    to_id: str
+
+
+class CreatePlanOp(BaseModel):
+    """Create a plan."""
+    op: Literal["create_plan"]
+    id: str
+    text: str | None = None
+    steps: list[StepData] = []
+
+
+class UpdatePlanOp(BaseModel):
+    """Update a plan."""
+    op: Literal["update_plan"]
+    id: str
+    text: str | None = None
+    steps: list[StepData] | None = None
+
+
+class DeletePlanOp(BaseModel):
+    """Delete a plan."""
+    op: Literal["delete_plan"]
+    id: str
+
+
+class RenamePlanOp(BaseModel):
+    """Rename a plan."""
+    op: Literal["rename_plan"]
+    id: str
+    new_id: str
+
+
+BatchOperation = Annotated[
+    Union[
+        CreateNodeOp,
+        UpdateNodeOp,
+        DeleteNodeOp,
+        RenameNodeOp,
+        LinkOp,
+        UnlinkOp,
+        CreatePlanOp,
+        UpdatePlanOp,
+        DeletePlanOp,
+        RenamePlanOp,
+    ],
+    Field(discriminator="op"),
+]
+
+
+class BatchRequest(BaseModel):
+    """Batch of operations to execute atomically."""
+    operations: list[BatchOperation]
+
+
+class BatchOperationResult(BaseModel):
+    """Result of a single operation in a batch."""
+    op: str
+    success: bool
+    message: str | None = None
+
+
+class BatchResponse(BaseModel):
+    """Response for a batch operation."""
+    success: bool
+    results: list[BatchOperationResult]
+    message: str | None = None

@@ -1,6 +1,10 @@
 /* tslint:disable */
 /* eslint-disable */
 export * from './AppState';
+export * from './BatchOperation';
+export * from './BatchOperationResult';
+export * from './BatchRequest';
+export * from './BatchResponse';
 export * from './DependencyOut';
 export * from './HTTPValidationError';
 export * from './LinkRequest';
