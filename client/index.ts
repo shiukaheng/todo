@@ -11,4 +11,4 @@
  */
 
 export * from './generated';
-export { subscribeToState, subscribeToTasks } from './sse';
+export { subscribeToState, subscribeToDisplay, subscribeToTasks } from './sse';

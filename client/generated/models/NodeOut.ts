@@ -47,10 +47,10 @@ export interface NodeOut {
     nodeType: NodeType;
     /**
      * 
-     * @type {boolean}
+     * @type {number}
      * @memberof NodeOut
      */
-    completed: boolean | null;
+    completed: number | null;
     /**
      * 
      * @type {number}
@@ -71,7 +71,7 @@ export interface NodeOut {
     updatedAt: number | null;
     /**
      * 
-     * @type {boolean}
+     * @type {number}
      * @memberof NodeOut
      */
     calculatedValue: boolean | null;
@@ -83,13 +83,13 @@ export interface NodeOut {
     calculatedDue: number | null;
     /**
      * 
-     * @type {boolean}
+     * @type {number}
      * @memberof NodeOut
      */
     depsClear: boolean | null;
     /**
      * 
-     * @type {boolean}
+     * @type {number}
      * @memberof NodeOut
      */
     isActionable: boolean | null;

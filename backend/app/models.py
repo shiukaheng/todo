@@ -20,7 +20,7 @@ class NodeType(str, Enum):
 class NodeBase(BaseModel):
     """Base node properties."""
     text: str | None = None
-    completed: bool = False  # Only used for Task nodes (ignored for gates)
+    completed: int | None = None  # Unix timestamp when completed (null = not completed)
     node_type: NodeType = NodeType.TASK  # NEW: replaces 'inferred'
     due: int | None = None
 
@@ -35,7 +35,7 @@ class NodeCreate(NodeBase):
 class NodeUpdate(BaseModel):
     """Node update request."""
     text: str | None = None
-    completed: bool | None = None
+    completed: int | None = None
     node_type: NodeType | None = None  # NEW: can change node type
     due: int | None = None
 
@@ -45,7 +45,7 @@ class NodeOut(BaseModel):
     id: str
     text: str
     node_type: NodeType  # NEW: derived from labels
-    completed: bool | None  # None for gate nodes
+    completed: int | None  # Unix timestamp when completed (None = not completed / gate node)
     due: int | None
     created_at: int | None
     updated_at: int | None
@@ -62,6 +62,7 @@ class DependencyOut(BaseModel):
     id: str
     from_id: str
     to_id: str
+    created_at: int | None = None
 
 
 class NodeListOut(BaseModel):
@@ -156,7 +157,7 @@ class CreateNodeOp(BaseModel):
     op: Literal["create_node"]
     id: str
     text: str | None = None
-    completed: bool = False
+    completed: int | None = None
     node_type: NodeType = NodeType.TASK
     due: int | None = None
     depends: list[str] | None = None
@@ -168,7 +169,7 @@ class UpdateNodeOp(BaseModel):
     op: Literal["update_node"]
     id: str
     text: str | None = None
-    completed: bool | None = None
+    completed: int | None = None
     node_type: NodeType | None = None
     due: int | None = None
 
@@ -263,3 +264,81 @@ class BatchResponse(BaseModel):
     success: bool
     results: list[BatchOperationResult]
     message: str | None = None
+
+
+# ============================================================================
+# View / Display Layer Models
+# ============================================================================
+
+
+class ViewOut(BaseModel):
+    """View response."""
+    id: str
+    positions: dict  # {nodeId: [x, y], ...}
+    whitelist: list[str]
+    blacklist: list[str]
+    created_at: int | None
+    updated_at: int | None
+
+
+class ViewListOut(BaseModel):
+    """All views."""
+    views: dict[str, ViewOut]
+
+
+class CreateViewOp(BaseModel):
+    """Create a view."""
+    op: Literal["create_view"]
+    id: str
+
+
+class DeleteViewOp(BaseModel):
+    """Delete a view."""
+    op: Literal["delete_view"]
+    id: str
+
+
+class UpdatePositionsOp(BaseModel):
+    """Merge positions into a view."""
+    op: Literal["update_positions"]
+    view_id: str
+    positions: dict  # {nodeId: [x, y], ...}
+
+
+class RemovePositionsOp(BaseModel):
+    """Remove positions from a view."""
+    op: Literal["remove_positions"]
+    view_id: str
+    node_ids: list[str]
+
+
+class SetWhitelistOp(BaseModel):
+    """Replace whitelist of a view."""
+    op: Literal["set_whitelist"]
+    view_id: str
+    node_ids: list[str]
+
+
+class SetBlacklistOp(BaseModel):
+    """Replace blacklist of a view."""
+    op: Literal["set_blacklist"]
+    view_id: str
+    node_ids: list[str]
+
+
+DisplayBatchOperation = Annotated[
+    Union[
+        CreateViewOp,
+        DeleteViewOp,
+        UpdatePositionsOp,
+        RemovePositionsOp,
+        SetWhitelistOp,
+        SetBlacklistOp,
+    ],
+    Field(discriminator="op"),
+]
+
+
+class DisplayBatchRequest(BaseModel):
+    """Batch of display operations to execute atomically."""
+    operations: list[DisplayBatchOperation]

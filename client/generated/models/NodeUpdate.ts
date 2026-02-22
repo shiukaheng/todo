@@ -35,10 +35,10 @@ export interface NodeUpdate {
     text?: string | null;
     /**
      * 
-     * @type {boolean}
+     * @type {number}
      * @memberof NodeUpdate
      */
-    completed?: boolean | null;
+    completed?: number | null;
     /**
      * 
      * @type {NodeType}

@@ -18,12 +18,15 @@ import type {
   AppState,
   BatchRequest,
   BatchResponse,
+  DisplayBatchRequest,
   HTTPValidationError,
   NodeListOut,
   NodeOut,
   OperationResult,
   PlanListOut,
   PlanOut,
+  ViewListOut,
+  ViewOut,
 } from '../models/index';
 import {
     AppStateFromJSON,
@@ -32,6 +35,7 @@ import {
     BatchRequestToJSON,
     BatchResponseFromJSON,
     BatchResponseToJSON,
+    DisplayBatchRequestToJSON,
     HTTPValidationErrorFromJSON,
     HTTPValidationErrorToJSON,
     NodeListOutFromJSON,
@@ -44,10 +48,16 @@ import {
     PlanListOutToJSON,
     PlanOutFromJSON,
     PlanOutToJSON,
+    ViewListOutFromJSON,
+    ViewOutFromJSON,
 } from '../models/index';
 
 export interface BatchOperationsApiBatchPostRequest {
     batchRequest: BatchRequest;
+}
+
+export interface DisplayBatchOperationsRequest {
+    displayBatchRequest: DisplayBatchRequest;
 }
 
 export interface GetPlanApiPlansPlanIdGetRequest {
@@ -56,6 +66,10 @@ export interface GetPlanApiPlansPlanIdGetRequest {
 
 export interface GetTaskApiTasksTaskIdGetRequest {
     taskId: string;
+}
+
+export interface GetViewRequest {
+    viewId: string;
 }
 
 /**
@@ -408,6 +422,111 @@ export class DefaultApi extends runtime.BaseAPI {
      */
     async subscribeTasksApiTasksSubscribeGet(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<any> {
         const response = await this.subscribeTasksApiTasksSubscribeGetRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * List all views.
+     * List Views
+     */
+    async listViewsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ViewListOut>> {
+        const queryParameters: any = {};
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        let urlPath = `/api/views`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => ViewListOutFromJSON(jsonValue));
+    }
+
+    /**
+     * List all views.
+     * List Views
+     */
+    async listViews(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ViewListOut> {
+        const response = await this.listViewsRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Get a single view.
+     * Get View
+     */
+    async getViewRaw(requestParameters: GetViewRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ViewOut>> {
+        if (requestParameters['viewId'] == null) {
+            throw new runtime.RequiredError(
+                'viewId',
+                'Required parameter "viewId" was null or undefined when calling getView().'
+            );
+        }
+
+        const queryParameters: any = {};
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        let urlPath = `/api/views/{view_id}`;
+        urlPath = urlPath.replace(`{${"view_id"}}`, encodeURIComponent(String(requestParameters['viewId'])));
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => ViewOutFromJSON(jsonValue));
+    }
+
+    /**
+     * Get a single view.
+     * Get View
+     */
+    async getView(requestParameters: GetViewRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ViewOut> {
+        const response = await this.getViewRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Execute multiple display operations atomically.
+     * Display Batch Operations
+     */
+    async displayBatchRaw(requestParameters: DisplayBatchOperationsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BatchResponse>> {
+        if (requestParameters['displayBatchRequest'] == null) {
+            throw new runtime.RequiredError(
+                'displayBatchRequest',
+                'Required parameter "displayBatchRequest" was null or undefined when calling displayBatch().'
+            );
+        }
+
+        const queryParameters: any = {};
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        let urlPath = `/api/display/batch`;
+
+        const response = await this.request({
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: DisplayBatchRequestToJSON(requestParameters['displayBatchRequest']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => BatchResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Execute multiple display operations atomically.
+     * Display Batch Operations
+     */
+    async displayBatch(requestParameters: DisplayBatchOperationsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BatchResponse> {
+        const response = await this.displayBatchRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

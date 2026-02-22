@@ -115,6 +115,7 @@ class SSEPublisher:
                     "id": dep.id,
                     "from_id": dep.from_id,
                     "to_id": dep.to_id,
+                    "created_at": dep.created_at,
                 }
                 for dep in dependencies
             },
@@ -123,5 +124,65 @@ class SSEPublisher:
         }
 
 
-# Global publisher instance
+class DisplaySSEPublisher:
+    """Manages SSE subscriptions for display layer (views) updates."""
+
+    def __init__(self):
+        self._subscribers: set[asyncio.Queue] = set()
+        self._lock = asyncio.Lock()
+
+    async def subscribe(self) -> AsyncGenerator[dict, None]:
+        """Subscribe to display state updates. Yields SSE-formatted events."""
+        queue: asyncio.Queue = asyncio.Queue()
+
+        async with self._lock:
+            self._subscribers.add(queue)
+
+        try:
+            data = self._get_current_display_state()
+            yield {"event": "init", "data": json.dumps(data)}
+
+            while True:
+                data = await queue.get()
+                yield {"event": "update", "data": json.dumps(data)}
+        finally:
+            async with self._lock:
+                self._subscribers.discard(queue)
+
+    async def broadcast(self) -> None:
+        """Broadcast current display state to all subscribers."""
+        if not self._subscribers:
+            return
+
+        data = self._get_current_display_state()
+
+        async with self._lock:
+            for queue in self._subscribers:
+                try:
+                    queue.put_nowait(data)
+                except asyncio.QueueFull:
+                    pass
+
+    def _get_current_display_state(self) -> dict:
+        """Get current display state matching ViewListOut schema."""
+        with get_session() as session:
+            views = session.execute_read(services.list_views)
+
+        return {
+            "views": {
+                view.id: {
+                    "id": view.id,
+                    "positions": view.positions,
+                    "whitelist": view.whitelist,
+                    "blacklist": view.blacklist,
+                    "created_at": view.created_at,
+                    "updated_at": view.updated_at,
+                }
+                for view in views
+            }
+        }
+
+
+# Global publisher instances
 publisher = SSEPublisher()
+display_publisher = DisplaySSEPublisher()

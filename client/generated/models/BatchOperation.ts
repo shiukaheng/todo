@@ -31,7 +31,7 @@ export interface CreateNodeOp {
     op: 'create_node';
     id: string;
     text?: string | null;
-    completed?: boolean;
+    completed?: number | null;
     nodeType?: NodeType;
     due?: number | null;
     depends?: Array<string> | null;
@@ -42,7 +42,7 @@ export interface UpdateNodeOp {
     op: 'update_node';
     id: string;
     text?: string | null;
-    completed?: boolean | null;
+    completed?: number | null;
     nodeType?: NodeType | null;
     due?: number | null;
 }

@@ -32,8 +32,17 @@ from app.models import (
     UpdatePlanOp,
     DeletePlanOp,
     RenamePlanOp,
+    ViewOut,
+    ViewListOut,
+    DisplayBatchRequest,
+    CreateViewOp,
+    DeleteViewOp,
+    UpdatePositionsOp,
+    RemovePositionsOp,
+    SetWhitelistOp,
+    SetBlacklistOp,
 )
-from app.api.sse import publisher
+from app.api.sse import publisher, display_publisher
 
 router = APIRouter()
 
@@ -44,6 +53,7 @@ def _dep_to_out(dep: services.Dependency) -> DependencyOut:
         id=dep.id,
         from_id=dep.from_id,
         to_id=dep.to_id,
+        created_at=dep.created_at,
     )
 
 
@@ -269,6 +279,10 @@ async def init_db():
         session.execute_write(services.migrate_dependency_ids)
     with get_session() as session:
         session.execute_write(services.migrate_to_boolean_graph)
+    with get_session() as session:
+        session.execute_write(services.migrate_completed_bool_to_timestamp)
+    with get_session() as session:
+        session.execute_write(services.migrate_dependency_created_at)
     return OperationResult(success=True, message="Database initialized and migrated")
 
 
@@ -298,7 +312,7 @@ def _dispatch_operation(tx, op) -> None:
         if "text" in update_data:
             kwargs["text"] = op.text
         if "completed" in update_data:
-            kwargs["completed"] = op.completed
+            kwargs["completed"] = op.completed  # int timestamp or None (to uncomplete)
         if "due" in update_data:
             kwargs["due"] = op.due
         found = services.update_node(tx, **kwargs)
@@ -371,4 +385,108 @@ async def batch_operations(req: BatchRequest):
         )
 
     await publisher.broadcast()
+    return BatchResponse(success=True, results=results)
+
+
+# ============================================================================
+# Display Layer (Views)
+# ============================================================================
+
+
+def _view_to_out(view: services.View) -> ViewOut:
+    """Convert View to Pydantic model."""
+    return ViewOut(
+        id=view.id,
+        positions=view.positions,
+        whitelist=view.whitelist,
+        blacklist=view.blacklist,
+        created_at=view.created_at,
+        updated_at=view.updated_at,
+    )
+
+
+@router.get("/views", response_model=ViewListOut)
+async def list_views():
+    """List all views."""
+    with get_session() as session:
+        views = session.execute_read(services.list_views)
+    return ViewListOut(views={v.id: _view_to_out(v) for v in views})
+
+
+@router.get("/views/{view_id}", response_model=ViewOut)
+async def get_view(view_id: str):
+    """Get a single view."""
+    with get_session() as session:
+        view = session.execute_read(lambda tx: services.get_view(tx, view_id))
+    if not view:
+        raise HTTPException(status_code=404, detail=f"View '{view_id}' not found")
+    return _view_to_out(view)
+
+
+@router.get("/display/subscribe")
+async def subscribe_display():
+    """Subscribe to real-time display layer updates via SSE."""
+    return EventSourceResponse(display_publisher.subscribe())
+
+
+def _dispatch_display_operation(tx, op) -> None:
+    """Dispatch a single display operation to the appropriate service function."""
+    if isinstance(op, CreateViewOp):
+        services.create_view(tx, id=op.id)
+    elif isinstance(op, DeleteViewOp):
+        found = services.delete_view(tx, op.id)
+        if not found:
+            raise ValueError(f"View '{op.id}' not found")
+    elif isinstance(op, UpdatePositionsOp):
+        found = services.update_positions(tx, view_id=op.view_id, positions=op.positions)
+        if not found:
+            raise ValueError(f"View '{op.view_id}' not found")
+    elif isinstance(op, RemovePositionsOp):
+        found = services.remove_positions(tx, view_id=op.view_id, node_ids=op.node_ids)
+        if not found:
+            raise ValueError(f"View '{op.view_id}' not found")
+    elif isinstance(op, SetWhitelistOp):
+        found = services.set_whitelist(tx, view_id=op.view_id, node_ids=op.node_ids)
+        if not found:
+            raise ValueError(f"View '{op.view_id}' not found")
+    elif isinstance(op, SetBlacklistOp):
+        found = services.set_blacklist(tx, view_id=op.view_id, node_ids=op.node_ids)
+        if not found:
+            raise ValueError(f"View '{op.view_id}' not found")
+    else:
+        raise ValueError(f"Unknown display operation type: {type(op)}")
+
+
+@router.post("/display/batch", response_model=BatchResponse)
+async def display_batch_operations(req: DisplayBatchRequest):
+    """Execute multiple display operations atomically in a single transaction."""
+    results: list[BatchOperationResult] = []
+
+    def _run_all(tx):
+        for i, op in enumerate(req.operations):
+            try:
+                _dispatch_display_operation(tx, op)
+                results.append(BatchOperationResult(op=op.op, success=True))
+            except Exception as e:
+                results.append(BatchOperationResult(
+                    op=op.op, success=False, message=str(e)
+                ))
+                for remaining in req.operations[i + 1:]:
+                    results.append(BatchOperationResult(
+                        op=remaining.op, success=False, message="skipped"
+                    ))
+                raise
+
+    try:
+        with get_session() as session:
+            session.execute_write(_run_all)
+    except Exception:
+        failed = next((r for r in results if not r.success), None)
+        return BatchResponse(
+            success=False,
+            results=results,
+            message=failed.message if failed else "unknown error",
+        )
+
+    await display_publisher.broadcast()
     return BatchResponse(success=True, results=results)

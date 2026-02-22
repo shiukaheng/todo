@@ -20,7 +20,7 @@ class Node:
     id: str
     node_type: str  # "Task", "And", "Or", "Not", "ExactlyOne" - DERIVED from labels
     text: str = ""
-    completed: bool | None = None  # Only for Task nodes
+    completed: int | None = None  # Unix timestamp when completed (None = not completed)
     due: int | None = None
     created_at: int | None = None
     updated_at: int | None = None
@@ -42,6 +42,7 @@ class Dependency:
     id: str
     from_id: str
     to_id: str
+    created_at: int | None = None
 
 
 @dataclass
@@ -146,7 +147,7 @@ def _build_value_calculator(nodes: dict[str, Node], deps: dict[str, list[str]]):
 
         if node.node_type == "Task":
             # Task: calculated_value = completed AND deps_clear
-            return (node.completed if node.completed is not None else False) and deps_clear
+            return (node.completed is not None) and deps_clear
         else:
             # Gates: calculated_value = deps_clear (no own value)
             return deps_clear
@@ -197,13 +198,14 @@ def list_dependencies(tx) -> list[Dependency]:
     """List all dependencies."""
     result = tx.run(
         "MATCH (a:Node)-[r:DEPENDS_ON]->(b:Node) "
-        "RETURN r.id AS id, a.id AS from_id, b.id AS to_id"
+        "RETURN r.id AS id, a.id AS from_id, b.id AS to_id, r.created_at AS created_at"
     )
     return [
         Dependency(
             id=record["id"] or "unknown",
             from_id=record["from_id"],
             to_id=record["to_id"],
+            created_at=record["created_at"],
         )
         for record in result
     ]
@@ -242,7 +244,7 @@ def get_node(tx, id: str) -> EnrichedNode | None:
         enriched.calculated_due = calc_due(id)
         dep_values = [calc_value(d) for d in deps_fwd.get(id, [])]
         enriched.deps_clear = _calculate_gate_logic(enriched.node.node_type, dep_values)
-        enriched.is_actionable = enriched.node.node_type == "Task" and not (enriched.node.completed if enriched.node.completed is not None else False) and enriched.deps_clear
+        enriched.is_actionable = enriched.node.node_type == "Task" and enriched.node.completed is None and enriched.deps_clear
 
     return enriched
 
@@ -268,7 +270,7 @@ def list_nodes(tx) -> tuple[list[EnrichedNode], list[Dependency], bool]:
             # deps_clear = gate-specific evaluation of dependencies
             dep_values = [calc_value(d) for d in deps_fwd.get(e.node.id, [])]
             e.deps_clear = _calculate_gate_logic(e.node.node_type, dep_values)
-            e.is_actionable = e.node.node_type == "Task" and not (e.node.completed if e.node.completed is not None else False) and e.deps_clear
+            e.is_actionable = e.node.node_type == "Task" and e.node.completed is None and e.deps_clear
 
     return enriched, dependencies, graph_has_cycles
 
@@ -283,7 +285,7 @@ def add_node(
     id: str,
     node_type: str = "Task",
     text: str | None = None,
-    completed: bool = False,
+    completed: int | None = None,
     due: int | None = None,
     depends: list[str] | None = None,
     blocks: list[str] | None = None,
@@ -303,8 +305,8 @@ def add_node(
     if due is not None:
         props["due"] = due
 
-    # Only add completed for Task nodes
-    if node_type == "Task":
+    # Only add completed for Task nodes (None = not completed, so don't set property)
+    if node_type == "Task" and completed is not None:
         props["completed"] = completed
 
     # Create with appropriate labels
@@ -346,7 +348,7 @@ def _propagate_uncompletion(tx, task_id: str, now: int) -> list[str]:
     result = tx.run(
         """
         MATCH (target:Node {id: $task_id})<-[:DEPENDS_ON]-(parent:Task)
-        WHERE parent.completed = true
+        WHERE parent.completed IS NOT NULL
         RETURN parent.id AS parent_id
         """,
         task_id=task_id
@@ -358,7 +360,7 @@ def _propagate_uncompletion(tx, task_id: str, now: int) -> list[str]:
     for dep_id in dependent_ids:
         # Mark this dependent as incomplete
         tx.run(
-            "MATCH (n:Task {id: $id}) SET n.completed = false, n.updated_at = $now",
+            "MATCH (n:Task {id: $id}) REMOVE n.completed SET n.updated_at = $now",
             id=dep_id,
             now=now
         )
@@ -376,7 +378,7 @@ def update_node(
     id: str,
     node_type: str | None = None,
     text: str | None = None,
-    completed: bool | None = None,
+    completed: int | None | object = _UNSET,
     due: int | None | object = _UNSET,
 ) -> bool:
     """Update an existing node. Returns True if found."""
@@ -410,7 +412,7 @@ def update_node(
             # Use WHERE clause to ensure atomicity - fails if type changed between read and write
             if node_type == "Task" and current_type != "Task":
                 # Converting TO Task - add completed property
-                completed_value = completed if completed is not None else False
+                completed_value = completed if completed is not _UNSET else None
                 query = (
                     f"MATCH (n:{current_type} {{id: $id}}) "
                     f"WHERE $current_type IN labels(n) "  # Atomic check
@@ -453,12 +455,12 @@ def update_node(
 
     # Check if we're marking a task as incomplete (for propagation)
     propagate_uncompletion = False
-    if completed is not None and not completed:
+    if completed is not _UNSET and completed is None:
         # Query current state to see if we're transitioning from complete to incomplete
         # Only Task nodes have completed property, so check node type
         result = tx.run(
             "MATCH (n:Node {id: $id}) "
-            "WHERE 'Task' IN labels(n) AND n.completed = true "
+            "WHERE 'Task' IN labels(n) AND n.completed IS NOT NULL "
             "RETURN n.completed AS current_completed",
             id=id
         )
@@ -471,8 +473,12 @@ def update_node(
     props = {}
     if text is not None:
         props["text"] = text
-    if completed is not None:
-        props["completed"] = completed
+    # Handle completed: distinguish between not provided (_UNSET), explicitly None (uncomplete), or a timestamp
+    if completed is not _UNSET:
+        if completed is None:
+            props["completed"] = None  # Will remove property in Neo4j
+        else:
+            props["completed"] = completed
     # Handle due: distinguish between not provided (_UNSET), explicitly None (clear), or a value
     if due is not _UNSET:
         if due is None:
@@ -544,7 +550,7 @@ def rename_node(tx, old_id: str, new_id: str) -> None:
 _CREATE_DEPENDENCY_QUERY = (
     "MATCH (a:Node {id: $from_id}), (b:Node {id: $to_id}) "
     "MERGE (a)-[r:DEPENDS_ON]->(b) "
-    "ON CREATE SET r.id = $dep_id "
+    "ON CREATE SET r.id = $dep_id, r.created_at = $now "
     "WITH {dep_id: r.id, found: true} AS _passthrough "
     # Transitive reduction: remove edges implied by longer paths
     "CALL { "
@@ -600,9 +606,10 @@ def _create_dependency(tx, from_id: str, to_id: str) -> str:
 
     # Create the dependency edge (MERGE handles duplicates)
     dep_id = str(uuid.uuid4())
+    now = int(time.time())
     result = tx.run(
         _CREATE_DEPENDENCY_QUERY,
-        from_id=from_id, to_id=to_id, dep_id=dep_id
+        from_id=from_id, to_id=to_id, dep_id=dep_id, now=now
     )
     record = result.single()
     if not record or not record["found"]:
@@ -645,6 +652,12 @@ def init_db(tx) -> None:
         "FOR ()-[r:STEP]->() REQUIRE r.id IS UNIQUE"
     )
 
+    # Create view constraints
+    tx.run(
+        "CREATE CONSTRAINT view_id_unique IF NOT EXISTS "
+        "FOR (v:View) REQUIRE v.id IS UNIQUE"
+    )
+
     # Note: In Neo4j Enterprise, we could add a constraint to prevent
     # duplicate STEP relationships from a Plan to the same Node:
     # CREATE CONSTRAINT plan_unique_steps IF NOT EXISTS
@@ -671,6 +684,35 @@ def migrate_to_boolean_graph(tx) -> None:
     )
 
 
+def migrate_completed_bool_to_timestamp(tx) -> None:
+    """Migrate completed from boolean to timestamp.
+
+    - true → current timestamp
+    - false → remove property (null = not completed)
+    """
+    now = int(time.time())
+    tx.run(
+        "MATCH (t:Task) WHERE t.completed = true "
+        "SET t.completed = $now",
+        now=now
+    )
+    tx.run(
+        "MATCH (t:Task) WHERE t.completed = false "
+        "REMOVE t.completed"
+    )
+
+
+def migrate_dependency_created_at(tx) -> None:
+    """Backfill created_at on DEPENDS_ON relationships where missing."""
+    now = int(time.time())
+    tx.run(
+        "MATCH (a:Node)-[r:DEPENDS_ON]->(b:Node) "
+        "WHERE r.created_at IS NULL "
+        "SET r.created_at = $now",
+        now=now
+    )
+
+
 def migrate_dependency_ids(tx) -> None:
     """Assign UUIDs to any relationships missing an ID."""
     tx.run(
@@ -684,8 +726,8 @@ def prime_tokens(tx) -> None:
     """Create and delete a dummy node to register property keys."""
     tx.run(
         "CREATE (n:__InitTokenRegistration:Node:Task "
-        "{id: '__init__', due: 0, completed: false, created_at: 0, updated_at: 0, text: ''}) "
-        "CREATE (n)-[:DEPENDS_ON {id: '__init__'}]->(n) "
+        "{id: '__init__', due: 0, completed: 0, created_at: 0, updated_at: 0, text: ''}) "
+        "CREATE (n)-[:DEPENDS_ON {id: '__init__', created_at: 0}]->(n) "
         "DETACH DELETE n"
     )
 
@@ -977,3 +1019,157 @@ def rename_plan(tx, old_id: str, new_id: str) -> None:
     )
     if not result.single():
         raise ValueError(f"Plan '{old_id}' not found")
+
+
+# ============================================================================
+# View / Display Layer operations
+# ============================================================================
+
+
+@dataclass
+class View:
+    """Display view with positions and filters."""
+    id: str
+    positions: dict  # {nodeId: [x, y], ...}
+    whitelist: list[str]
+    blacklist: list[str]
+    created_at: int | None = None
+    updated_at: int | None = None
+
+
+def _record_to_view(record) -> View:
+    """Convert Neo4j record to View."""
+    import json as _json
+    return View(
+        id=record["id"],
+        positions=_json.loads(record["positions_json"] or "{}"),
+        whitelist=_json.loads(record["whitelist_json"] or "[]"),
+        blacklist=_json.loads(record["blacklist_json"] or "[]"),
+        created_at=record["created_at"],
+        updated_at=record["updated_at"],
+    )
+
+
+def create_view(tx, id: str) -> View:
+    """Create a new empty View."""
+    import json as _json
+    now = int(time.time())
+    existing = tx.run("MATCH (v:View {id: $id}) RETURN v", id=id).single()
+    if existing:
+        raise ValueError(f"View '{id}' already exists")
+
+    tx.run(
+        "CREATE (v:View {id: $id, positions_json: $pos, whitelist_json: $wl, "
+        "blacklist_json: $bl, created_at: $now, updated_at: $now})",
+        id=id,
+        pos=_json.dumps({}),
+        wl=_json.dumps([]),
+        bl=_json.dumps([]),
+        now=now,
+    )
+    return View(id=id, positions={}, whitelist=[], blacklist=[], created_at=now, updated_at=now)
+
+
+def delete_view(tx, id: str) -> bool:
+    """Delete a View. Returns True if found."""
+    result = tx.run(
+        "MATCH (v:View {id: $id}) DELETE v RETURN count(v) AS n",
+        id=id,
+    )
+    return result.single()["n"] > 0
+
+
+def get_view(tx, id: str) -> View | None:
+    """Get a single View by ID."""
+    result = tx.run(
+        "MATCH (v:View {id: $id}) "
+        "RETURN v.id AS id, v.positions_json AS positions_json, "
+        "v.whitelist_json AS whitelist_json, v.blacklist_json AS blacklist_json, "
+        "v.created_at AS created_at, v.updated_at AS updated_at",
+        id=id,
+    )
+    record = result.single()
+    if not record:
+        return None
+    return _record_to_view(record)
+
+
+def list_views(tx) -> list[View]:
+    """List all Views."""
+    result = tx.run(
+        "MATCH (v:View) "
+        "RETURN v.id AS id, v.positions_json AS positions_json, "
+        "v.whitelist_json AS whitelist_json, v.blacklist_json AS blacklist_json, "
+        "v.created_at AS created_at, v.updated_at AS updated_at "
+        "ORDER BY v.updated_at DESC"
+    )
+    return [_record_to_view(r) for r in result]
+
+
+def update_positions(tx, view_id: str, positions: dict) -> bool:
+    """Merge positions into a View (read-modify-write). Returns True if found."""
+    import json as _json
+    now = int(time.time())
+    result = tx.run(
+        "MATCH (v:View {id: $id}) RETURN v.positions_json AS positions_json",
+        id=view_id,
+    )
+    record = result.single()
+    if not record:
+        return False
+
+    current = _json.loads(record["positions_json"] or "{}")
+    current.update(positions)
+    tx.run(
+        "MATCH (v:View {id: $id}) SET v.positions_json = $pos, v.updated_at = $now",
+        id=view_id, pos=_json.dumps(current), now=now,
+    )
+    return True
+
+
+def remove_positions(tx, view_id: str, node_ids: list[str]) -> bool:
+    """Remove position keys from a View. Returns True if found."""
+    import json as _json
+    now = int(time.time())
+    result = tx.run(
+        "MATCH (v:View {id: $id}) RETURN v.positions_json AS positions_json",
+        id=view_id,
+    )
+    record = result.single()
+    if not record:
+        return False
+
+    current = _json.loads(record["positions_json"] or "{}")
+    for nid in node_ids:
+        current.pop(nid, None)
+    tx.run(
+        "MATCH (v:View {id: $id}) SET v.positions_json = $pos, v.updated_at = $now",
+        id=view_id, pos=_json.dumps(current), now=now,
+    )
+    return True
+
+
+def set_whitelist(tx, view_id: str, node_ids: list[str]) -> bool:
+    """Replace whitelist of a View. Returns True if found."""
+    import json as _json
+    now = int(time.time())
+    result = tx.run(
+        "MATCH (v:View {id: $id}) "
+        "SET v.whitelist_json = $wl, v.updated_at = $now "
+        "RETURN v",
+        id=view_id, wl=_json.dumps(node_ids), now=now,
+    )
+    return result.single() is not None
+
+
+def set_blacklist(tx, view_id: str, node_ids: list[str]) -> bool:
+    """Replace blacklist of a View. Returns True if found."""
+    import json as _json
+    now = int(time.time())
+    result = tx.run(
+        "MATCH (v:View {id: $id}) "
+        "SET v.blacklist_json = $bl, v.updated_at = $now "
+        "RETURN v",
+        id=view_id, bl=_json.dumps(node_ids), now=now,
+    )
+    return result.single() is not None

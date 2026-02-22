@@ -35,10 +35,10 @@ export interface NodeCreate {
     text?: string | null;
     /**
      * 
-     * @type {boolean}
+     * @type {number}
      * @memberof NodeCreate
      */
-    completed?: boolean;
+    completed?: number | null;
     /**
      * 
      * @type {NodeType}

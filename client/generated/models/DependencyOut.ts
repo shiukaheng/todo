@@ -37,6 +37,12 @@ export interface DependencyOut {
      * @memberof DependencyOut
      */
     toId: string;
+    /**
+     *
+     * @type {number}
+     * @memberof DependencyOut
+     */
+    createdAt?: number | null;
 }
 
 /**
@@ -62,6 +68,7 @@ export function DependencyOutFromJSONTyped(json: any, ignoreDiscriminator: boole
         'id': json['id'],
         'fromId': json['from_id'],
         'toId': json['to_id'],
+        'createdAt': json['created_at'] == null ? undefined : json['created_at'],
     };
 }
 
@@ -79,6 +86,7 @@ export function DependencyOutToJSONTyped(value?: DependencyOut | null, ignoreDis
         'id': value['id'],
         'from_id': value['fromId'],
         'to_id': value['toId'],
+        'created_at': value['createdAt'],
     };
 }
 
