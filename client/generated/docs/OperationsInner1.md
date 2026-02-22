@@ -1,29 +1,30 @@
 
-# DependencyOut
+# OperationsInner1
 
-Dependency relationship.
 
 ## Properties
 
 Name | Type
 ------------ | -------------
+`op` | string
+`viewId` | string
+`whitelist` | Array&lt;string&gt;
+`blacklist` | Array&lt;string&gt;
 `id` | string
-`fromId` | string
-`toId` | string
-`createdAt` | number
 
 ## Example
 
 ```typescript
-import type { DependencyOut } from ''
+import type { OperationsInner1 } from ''
 
 // TODO: Update the object below with actual values
 const example = {
+  "op": null,
+  "viewId": null,
+  "whitelist": null,
+  "blacklist": null,
   "id": null,
-  "fromId": null,
-  "toId": null,
-  "createdAt": null,
-} satisfies DependencyOut
+} satisfies OperationsInner1
 
 console.log(example)
 
@@ -32,7 +33,7 @@ const exampleJSON: string = JSON.stringify(example)
 console.log(exampleJSON)
 
 // Parse the JSON string back to an object
-const exampleParsed = JSON.parse(exampleJSON) as DependencyOut
+const exampleParsed = JSON.parse(exampleJSON) as OperationsInner1
 console.log(exampleParsed)
 ```
 

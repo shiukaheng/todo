@@ -1,29 +1,25 @@
 
-# DependencyOut
+# DeletePlanOp
 
-Dependency relationship.
+Delete a plan.
 
 ## Properties
 
 Name | Type
 ------------ | -------------
+`op` | string
 `id` | string
-`fromId` | string
-`toId` | string
-`createdAt` | number
 
 ## Example
 
 ```typescript
-import type { DependencyOut } from ''
+import type { DeletePlanOp } from ''
 
 // TODO: Update the object below with actual values
 const example = {
+  "op": null,
   "id": null,
-  "fromId": null,
-  "toId": null,
-  "createdAt": null,
-} satisfies DependencyOut
+} satisfies DeletePlanOp
 
 console.log(example)
 
@@ -32,7 +28,7 @@ const exampleJSON: string = JSON.stringify(example)
 console.log(exampleJSON)
 
 // Parse the JSON string back to an object
-const exampleParsed = JSON.parse(exampleJSON) as DependencyOut
+const exampleParsed = JSON.parse(exampleJSON) as DeletePlanOp
 console.log(exampleParsed)
 ```
 

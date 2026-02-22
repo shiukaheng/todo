@@ -1050,10 +1050,40 @@ def _record_to_view(record) -> View:
     )
 
 
+def get_view_positions(tx, view_id: str) -> dict | None:
+    """Return positions dict for a view, or None if the view doesn't exist."""
+    import json as _json
+    result = tx.run(
+        "MATCH (v:View {id: $id}) RETURN v.positions_json AS positions_json",
+        id=view_id,
+    )
+    record = result.single()
+    if not record:
+        return None
+    return _json.loads(record["positions_json"] or "{}")
+
+
+def set_view_positions(tx, view_id: str, positions: dict) -> None:
+    """Upsert a view with new positions (only touches positions_json and updated_at)."""
+    import json as _json
+    now = int(time.time())
+
+    # MERGE: create with defaults if not exists
+    tx.run(
+        "MERGE (v:View {id: $id}) "
+        "ON CREATE SET v.positions_json = $pos, v.whitelist_json = $empty_list, "
+        "v.blacklist_json = $empty_list, v.created_at = $now, v.updated_at = $now "
+        "ON MATCH SET v.positions_json = $pos, v.updated_at = $now",
+        id=view_id,
+        pos=_json.dumps(positions),
+        empty_list=_json.dumps([]),
+        now=now,
+    )
+
+
 def update_view(
     tx,
     view_id: str,
-    positions: dict | None = None,
     whitelist: list[str] | None = None,
     blacklist: list[str] | None = None,
 ) -> View:
@@ -1075,9 +1105,6 @@ def update_view(
     # Build SET clause for provided fields
     set_parts = ["v.updated_at = $now"]
     params: dict = {"id": view_id, "now": now}
-    if positions is not None:
-        set_parts.append("v.positions_json = $pos")
-        params["pos"] = _json.dumps(positions)
     if whitelist is not None:
         set_parts.append("v.whitelist_json = $wl")
         params["wl"] = _json.dumps(whitelist)

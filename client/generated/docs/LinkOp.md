@@ -1,29 +1,27 @@
 
-# DependencyOut
+# LinkOp
 
-Dependency relationship.
+Create a dependency link.
 
 ## Properties
 
 Name | Type
 ------------ | -------------
-`id` | string
+`op` | string
 `fromId` | string
 `toId` | string
-`createdAt` | number
 
 ## Example
 
 ```typescript
-import type { DependencyOut } from ''
+import type { LinkOp } from ''
 
 // TODO: Update the object below with actual values
 const example = {
-  "id": null,
+  "op": null,
   "fromId": null,
   "toId": null,
-  "createdAt": null,
-} satisfies DependencyOut
+} satisfies LinkOp
 
 console.log(example)
 
@@ -32,7 +30,7 @@ const exampleJSON: string = JSON.stringify(example)
 console.log(exampleJSON)
 
 // Parse the JSON string back to an object
-const exampleParsed = JSON.parse(exampleJSON) as DependencyOut
+const exampleParsed = JSON.parse(exampleJSON) as LinkOp
 console.log(exampleParsed)
 ```
 

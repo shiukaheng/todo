@@ -1,47 +1,33 @@
 
-# NodeOut
+# ViewOut
 
-Node response with calculated fields.
+View response.
 
 ## Properties
 
 Name | Type
 ------------ | -------------
 `id` | string
-`text` | string
-`nodeType` | [NodeType](NodeType.md)
-`completed` | number
-`due` | number
+`positions` | { [key: string]: any; }
+`whitelist` | Array&lt;string&gt;
+`blacklist` | Array&lt;string&gt;
 `createdAt` | number
 `updatedAt` | number
-`calculatedValue` | boolean
-`calculatedDue` | number
-`depsClear` | boolean
-`isActionable` | boolean
-`parents` | Array&lt;string&gt;
-`children` | Array&lt;string&gt;
 
 ## Example
 
 ```typescript
-import type { NodeOut } from ''
+import type { ViewOut } from ''
 
 // TODO: Update the object below with actual values
 const example = {
   "id": null,
-  "text": null,
-  "nodeType": null,
-  "completed": null,
-  "due": null,
+  "positions": null,
+  "whitelist": null,
+  "blacklist": null,
   "createdAt": null,
   "updatedAt": null,
-  "calculatedValue": null,
-  "calculatedDue": null,
-  "depsClear": null,
-  "isActionable": null,
-  "parents": null,
-  "children": null,
-} satisfies NodeOut
+} satisfies ViewOut
 
 console.log(example)
 
@@ -50,7 +36,7 @@ const exampleJSON: string = JSON.stringify(example)
 console.log(exampleJSON)
 
 // Parse the JSON string back to an object
-const exampleParsed = JSON.parse(exampleJSON) as NodeOut
+const exampleParsed = JSON.parse(exampleJSON) as ViewOut
 console.log(exampleParsed)
 ```
 

@@ -1,29 +1,27 @@
 
-# DependencyOut
+# UnlinkOp
 
-Dependency relationship.
+Remove a dependency link.
 
 ## Properties
 
 Name | Type
 ------------ | -------------
-`id` | string
+`op` | string
 `fromId` | string
 `toId` | string
-`createdAt` | number
 
 ## Example
 
 ```typescript
-import type { DependencyOut } from ''
+import type { UnlinkOp } from ''
 
 // TODO: Update the object below with actual values
 const example = {
-  "id": null,
+  "op": null,
   "fromId": null,
   "toId": null,
-  "createdAt": null,
-} satisfies DependencyOut
+} satisfies UnlinkOp
 
 console.log(example)
 
@@ -32,7 +30,7 @@ const exampleJSON: string = JSON.stringify(example)
 console.log(exampleJSON)
 
 // Parse the JSON string back to an object
-const exampleParsed = JSON.parse(exampleJSON) as DependencyOut
+const exampleParsed = JSON.parse(exampleJSON) as UnlinkOp
 console.log(exampleParsed)
 ```
 

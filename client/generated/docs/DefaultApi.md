@@ -4,35 +4,32 @@ All URIs are relative to *http://localhost*
 
 | Method | HTTP request | Description |
 |------------- | ------------- | -------------|
-| [**addTaskApiTasksPost**](DefaultApi.md#addtaskapitaskspost) | **POST** /api/tasks | Add Task |
-| [**createPlanApiPlansPost**](DefaultApi.md#createplanapiplanspost) | **POST** /api/plans | Create Plan |
-| [**deletePlanApiPlansPlanIdDelete**](DefaultApi.md#deleteplanapiplansplaniddelete) | **DELETE** /api/plans/{plan_id} | Delete Plan |
+| [**batchOperationsApiBatchPost**](DefaultApi.md#batchoperationsapibatchpost) | **POST** /api/batch | Batch Operations |
+| [**displayBatchOperationsApiDisplayBatchPost**](DefaultApi.md#displaybatchoperationsapidisplaybatchpost) | **POST** /api/display/batch | Display Batch Operations |
 | [**getPlanApiPlansPlanIdGet**](DefaultApi.md#getplanapiplansplanidget) | **GET** /api/plans/{plan_id} | Get Plan |
 | [**getStateApiStateGet**](DefaultApi.md#getstateapistateget) | **GET** /api/state | Get State |
 | [**getTaskApiTasksTaskIdGet**](DefaultApi.md#gettaskapitaskstaskidget) | **GET** /api/tasks/{task_id} | Get Task |
+| [**getViewApiViewsViewIdGet**](DefaultApi.md#getviewapiviewsviewidget) | **GET** /api/views/{view_id} | Get View |
+| [**getViewPositionsApiViewsViewIdPositionsGet**](DefaultApi.md#getviewpositionsapiviewsviewidpositionsget) | **GET** /api/views/{view_id}/positions | Get View Positions |
 | [**healthHealthGet**](DefaultApi.md#healthhealthget) | **GET** /health | Health |
 | [**initDbApiInitPost**](DefaultApi.md#initdbapiinitpost) | **POST** /api/init | Init Db |
-| [**linkTasksApiLinksPost**](DefaultApi.md#linktasksapilinkspost) | **POST** /api/links | Link Tasks |
 | [**listPlansApiPlansGet**](DefaultApi.md#listplansapiplansget) | **GET** /api/plans | List Plans |
 | [**listTasksApiTasksGet**](DefaultApi.md#listtasksapitasksget) | **GET** /api/tasks | List Tasks |
-| [**removeTaskApiTasksTaskIdDelete**](DefaultApi.md#removetaskapitaskstaskiddelete) | **DELETE** /api/tasks/{task_id} | Remove Task |
-| [**renamePlanApiPlansPlanIdRenamePost**](DefaultApi.md#renameplanapiplansplanidrenamepost) | **POST** /api/plans/{plan_id}/rename | Rename Plan |
-| [**renameTaskApiTasksTaskIdRenamePost**](DefaultApi.md#renametaskapitaskstaskidrenamepost) | **POST** /api/tasks/{task_id}/rename | Rename Task |
-| [**setTaskApiTasksTaskIdPatch**](DefaultApi.md#settaskapitaskstaskidpatch) | **PATCH** /api/tasks/{task_id} | Set Task |
+| [**listViewsApiViewsGet**](DefaultApi.md#listviewsapiviewsget) | **GET** /api/views | List Views |
+| [**putViewPositionsApiViewsViewIdPositionsPut**](DefaultApi.md#putviewpositionsapiviewsviewidpositionsput) | **PUT** /api/views/{view_id}/positions | Put View Positions |
+| [**subscribeDisplayApiDisplaySubscribeGet**](DefaultApi.md#subscribedisplayapidisplaysubscribeget) | **GET** /api/display/subscribe | Subscribe Display |
 | [**subscribeStateApiStateSubscribeGet**](DefaultApi.md#subscribestateapistatesubscribeget) | **GET** /api/state/subscribe | Subscribe State |
 | [**subscribeTasksApiTasksSubscribeGet**](DefaultApi.md#subscribetasksapitaskssubscribeget) | **GET** /api/tasks/subscribe | Subscribe Tasks |
-| [**unlinkTasksApiLinksDelete**](DefaultApi.md#unlinktasksapilinksdelete) | **DELETE** /api/links | Unlink Tasks |
-| [**updatePlanApiPlansPlanIdPatch**](DefaultApi.md#updateplanapiplansplanidpatch) | **PATCH** /api/plans/{plan_id} | Update Plan |
 
 
 
-## addTaskApiTasksPost
+## batchOperationsApiBatchPost
 
-> NodeOut addTaskApiTasksPost(nodeCreate)
+> BatchResponse batchOperationsApiBatchPost(batchRequest)
 
-Add Task
+Batch Operations
 
-Create a new task.
+Execute multiple operations atomically in a single transaction.
 
 ### Example
 
@@ -41,19 +38,19 @@ import {
   Configuration,
   DefaultApi,
 } from '';
-import type { AddTaskApiTasksPostRequest } from '';
+import type { BatchOperationsApiBatchPostRequest } from '';
 
 async function example() {
   console.log("🚀 Testing  SDK...");
   const api = new DefaultApi();
 
   const body = {
-    // NodeCreate
-    nodeCreate: ...,
-  } satisfies AddTaskApiTasksPostRequest;
+    // BatchRequest
+    batchRequest: ...,
+  } satisfies BatchOperationsApiBatchPostRequest;
 
   try {
-    const data = await api.addTaskApiTasksPost(body);
+    const data = await api.batchOperationsApiBatchPost(body);
     console.log(data);
   } catch (error) {
     console.error(error);
@@ -69,11 +66,11 @@ example().catch(console.error);
 
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
-| **nodeCreate** | [NodeCreate](NodeCreate.md) |  | |
+| **batchRequest** | [BatchRequest](BatchRequest.md) |  | |
 
 ### Return type
 
-[**NodeOut**](NodeOut.md)
+[**BatchResponse**](BatchResponse.md)
 
 ### Authorization
 
@@ -94,13 +91,13 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
-## createPlanApiPlansPost
+## displayBatchOperationsApiDisplayBatchPost
 
-> PlanOut createPlanApiPlansPost(planCreate)
+> BatchResponse displayBatchOperationsApiDisplayBatchPost(displayBatchRequest)
 
-Create Plan
+Display Batch Operations
 
-Create a new plan.
+Execute multiple display operations atomically in a single transaction.
 
 ### Example
 
@@ -109,19 +106,19 @@ import {
   Configuration,
   DefaultApi,
 } from '';
-import type { CreatePlanApiPlansPostRequest } from '';
+import type { DisplayBatchOperationsApiDisplayBatchPostRequest } from '';
 
 async function example() {
   console.log("🚀 Testing  SDK...");
   const api = new DefaultApi();
 
   const body = {
-    // PlanCreate
-    planCreate: ...,
-  } satisfies CreatePlanApiPlansPostRequest;
+    // DisplayBatchRequest
+    displayBatchRequest: ...,
+  } satisfies DisplayBatchOperationsApiDisplayBatchPostRequest;
 
   try {
-    const data = await api.createPlanApiPlansPost(body);
+    const data = await api.displayBatchOperationsApiDisplayBatchPost(body);
     console.log(data);
   } catch (error) {
     console.error(error);
@@ -137,11 +134,11 @@ example().catch(console.error);
 
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
-| **planCreate** | [PlanCreate](PlanCreate.md) |  | |
+| **displayBatchRequest** | [DisplayBatchRequest](DisplayBatchRequest.md) |  | |
 
 ### Return type
 
-[**PlanOut**](PlanOut.md)
+[**BatchResponse**](BatchResponse.md)
 
 ### Authorization
 
@@ -150,74 +147,6 @@ No authorization required
 ### HTTP request headers
 
 - **Content-Type**: `application/json`
-- **Accept**: `application/json`
-
-
-### HTTP response details
-| Status code | Description | Response headers |
-|-------------|-------------|------------------|
-| **200** | Successful Response |  -  |
-| **422** | Validation Error |  -  |
-
-[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
-
-
-## deletePlanApiPlansPlanIdDelete
-
-> OperationResult deletePlanApiPlansPlanIdDelete(planId)
-
-Delete Plan
-
-Delete a plan.
-
-### Example
-
-```ts
-import {
-  Configuration,
-  DefaultApi,
-} from '';
-import type { DeletePlanApiPlansPlanIdDeleteRequest } from '';
-
-async function example() {
-  console.log("🚀 Testing  SDK...");
-  const api = new DefaultApi();
-
-  const body = {
-    // string
-    planId: planId_example,
-  } satisfies DeletePlanApiPlansPlanIdDeleteRequest;
-
-  try {
-    const data = await api.deletePlanApiPlansPlanIdDelete(body);
-    console.log(data);
-  } catch (error) {
-    console.error(error);
-  }
-}
-
-// Run the test
-example().catch(console.error);
-```
-
-### Parameters
-
-
-| Name | Type | Description  | Notes |
-|------------- | ------------- | ------------- | -------------|
-| **planId** | `string` |  | [Defaults to `undefined`] |
-
-### Return type
-
-[**OperationResult**](OperationResult.md)
-
-### Authorization
-
-No authorization required
-
-### HTTP request headers
-
-- **Content-Type**: Not defined
 - **Accept**: `application/json`
 
 
@@ -425,6 +354,142 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
+## getViewApiViewsViewIdGet
+
+> ViewOut getViewApiViewsViewIdGet(viewId)
+
+Get View
+
+Get a single view.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { GetViewApiViewsViewIdGetRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    viewId: viewId_example,
+  } satisfies GetViewApiViewsViewIdGetRequest;
+
+  try {
+    const data = await api.getViewApiViewsViewIdGet(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **viewId** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**ViewOut**](ViewOut.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | Successful Response |  -  |
+| **422** | Validation Error |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
+## getViewPositionsApiViewsViewIdPositionsGet
+
+> ViewPositionsOut getViewPositionsApiViewsViewIdPositionsGet(viewId)
+
+Get View Positions
+
+Get positions for a view.
+
+### Example
+
+```ts
+import {
+  Configuration,
+  DefaultApi,
+} from '';
+import type { GetViewPositionsApiViewsViewIdPositionsGetRequest } from '';
+
+async function example() {
+  console.log("🚀 Testing  SDK...");
+  const api = new DefaultApi();
+
+  const body = {
+    // string
+    viewId: viewId_example,
+  } satisfies GetViewPositionsApiViewsViewIdPositionsGetRequest;
+
+  try {
+    const data = await api.getViewPositionsApiViewsViewIdPositionsGet(body);
+    console.log(data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// Run the test
+example().catch(console.error);
+```
+
+### Parameters
+
+
+| Name | Type | Description  | Notes |
+|------------- | ------------- | ------------- | -------------|
+| **viewId** | `string` |  | [Defaults to `undefined`] |
+
+### Return type
+
+[**ViewPositionsOut**](ViewPositionsOut.md)
+
+### Authorization
+
+No authorization required
+
+### HTTP request headers
+
+- **Content-Type**: Not defined
+- **Accept**: `application/json`
+
+
+### HTTP response details
+| Status code | Description | Response headers |
+|-------------|-------------|------------------|
+| **200** | Successful Response |  -  |
+| **422** | Validation Error |  -  |
+
+[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
+
+
 ## healthHealthGet
 
 > any healthHealthGet()
@@ -539,74 +604,6 @@ No authorization required
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 | **200** | Successful Response |  -  |
-
-[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
-
-
-## linkTasksApiLinksPost
-
-> DependencyOut linkTasksApiLinksPost(linkRequest)
-
-Link Tasks
-
-Create a dependency: from_id depends on to_id.
-
-### Example
-
-```ts
-import {
-  Configuration,
-  DefaultApi,
-} from '';
-import type { LinkTasksApiLinksPostRequest } from '';
-
-async function example() {
-  console.log("🚀 Testing  SDK...");
-  const api = new DefaultApi();
-
-  const body = {
-    // LinkRequest
-    linkRequest: ...,
-  } satisfies LinkTasksApiLinksPostRequest;
-
-  try {
-    const data = await api.linkTasksApiLinksPost(body);
-    console.log(data);
-  } catch (error) {
-    console.error(error);
-  }
-}
-
-// Run the test
-example().catch(console.error);
-```
-
-### Parameters
-
-
-| Name | Type | Description  | Notes |
-|------------- | ------------- | ------------- | -------------|
-| **linkRequest** | [LinkRequest](LinkRequest.md) |  | |
-
-### Return type
-
-[**DependencyOut**](DependencyOut.md)
-
-### Authorization
-
-No authorization required
-
-### HTTP request headers
-
-- **Content-Type**: `application/json`
-- **Accept**: `application/json`
-
-
-### HTTP response details
-| Status code | Description | Response headers |
-|-------------|-------------|------------------|
-| **200** | Successful Response |  -  |
-| **422** | Validation Error |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
@@ -729,13 +726,13 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
-## removeTaskApiTasksTaskIdDelete
+## listViewsApiViewsGet
 
-> OperationResult removeTaskApiTasksTaskIdDelete(taskId)
+> ViewListOut listViewsApiViewsGet()
 
-Remove Task
+List Views
 
-Delete a task and its edges.
+List all views.
 
 ### Example
 
@@ -744,19 +741,14 @@ import {
   Configuration,
   DefaultApi,
 } from '';
-import type { RemoveTaskApiTasksTaskIdDeleteRequest } from '';
+import type { ListViewsApiViewsGetRequest } from '';
 
 async function example() {
   console.log("🚀 Testing  SDK...");
   const api = new DefaultApi();
 
-  const body = {
-    // string
-    taskId: taskId_example,
-  } satisfies RemoveTaskApiTasksTaskIdDeleteRequest;
-
   try {
-    const data = await api.removeTaskApiTasksTaskIdDelete(body);
+    const data = await api.listViewsApiViewsGet();
     console.log(data);
   } catch (error) {
     console.error(error);
@@ -769,14 +761,11 @@ example().catch(console.error);
 
 ### Parameters
 
-
-| Name | Type | Description  | Notes |
-|------------- | ------------- | ------------- | -------------|
-| **taskId** | `string` |  | [Defaults to `undefined`] |
+This endpoint does not need any parameter.
 
 ### Return type
 
-[**OperationResult**](OperationResult.md)
+[**ViewListOut**](ViewListOut.md)
 
 ### Authorization
 
@@ -792,18 +781,17 @@ No authorization required
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 | **200** | Successful Response |  -  |
-| **422** | Validation Error |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
-## renamePlanApiPlansPlanIdRenamePost
+## putViewPositionsApiViewsViewIdPositionsPut
 
-> OperationResult renamePlanApiPlansPlanIdRenamePost(planId, renameRequest)
+> putViewPositionsApiViewsViewIdPositionsPut(viewId, viewPositionsIn)
 
-Rename Plan
+Put View Positions
 
-Rename a plan (change its ID).
+Full overwrite of positions for a view. Does NOT trigger display SSE broadcast.
 
 ### Example
 
@@ -812,7 +800,7 @@ import {
   Configuration,
   DefaultApi,
 } from '';
-import type { RenamePlanApiPlansPlanIdRenamePostRequest } from '';
+import type { PutViewPositionsApiViewsViewIdPositionsPutRequest } from '';
 
 async function example() {
   console.log("🚀 Testing  SDK...");
@@ -820,13 +808,13 @@ async function example() {
 
   const body = {
     // string
-    planId: planId_example,
-    // RenameRequest
-    renameRequest: ...,
-  } satisfies RenamePlanApiPlansPlanIdRenamePostRequest;
+    viewId: viewId_example,
+    // ViewPositionsIn
+    viewPositionsIn: ...,
+  } satisfies PutViewPositionsApiViewsViewIdPositionsPutRequest;
 
   try {
-    const data = await api.renamePlanApiPlansPlanIdRenamePost(body);
+    const data = await api.putViewPositionsApiViewsViewIdPositionsPut(body);
     console.log(data);
   } catch (error) {
     console.error(error);
@@ -842,12 +830,12 @@ example().catch(console.error);
 
 | Name | Type | Description  | Notes |
 |------------- | ------------- | ------------- | -------------|
-| **planId** | `string` |  | [Defaults to `undefined`] |
-| **renameRequest** | [RenameRequest](RenameRequest.md) |  | |
+| **viewId** | `string` |  | [Defaults to `undefined`] |
+| **viewPositionsIn** | [ViewPositionsIn](ViewPositionsIn.md) |  | |
 
 ### Return type
 
-[**OperationResult**](OperationResult.md)
+`void` (Empty response body)
 
 ### Authorization
 
@@ -862,19 +850,19 @@ No authorization required
 ### HTTP response details
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
-| **200** | Successful Response |  -  |
+| **204** | Successful Response |  -  |
 | **422** | Validation Error |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
-## renameTaskApiTasksTaskIdRenamePost
+## subscribeDisplayApiDisplaySubscribeGet
 
-> OperationResult renameTaskApiTasksTaskIdRenamePost(taskId, renameRequest)
+> any subscribeDisplayApiDisplaySubscribeGet()
 
-Rename Task
+Subscribe Display
 
-Rename a task (change its ID).
+Subscribe to real-time display layer updates via SSE.
 
 ### Example
 
@@ -883,21 +871,14 @@ import {
   Configuration,
   DefaultApi,
 } from '';
-import type { RenameTaskApiTasksTaskIdRenamePostRequest } from '';
+import type { SubscribeDisplayApiDisplaySubscribeGetRequest } from '';
 
 async function example() {
   console.log("🚀 Testing  SDK...");
   const api = new DefaultApi();
 
-  const body = {
-    // string
-    taskId: taskId_example,
-    // RenameRequest
-    renameRequest: ...,
-  } satisfies RenameTaskApiTasksTaskIdRenamePostRequest;
-
   try {
-    const data = await api.renameTaskApiTasksTaskIdRenamePost(body);
+    const data = await api.subscribeDisplayApiDisplaySubscribeGet();
     console.log(data);
   } catch (error) {
     console.error(error);
@@ -910,15 +891,11 @@ example().catch(console.error);
 
 ### Parameters
 
-
-| Name | Type | Description  | Notes |
-|------------- | ------------- | ------------- | -------------|
-| **taskId** | `string` |  | [Defaults to `undefined`] |
-| **renameRequest** | [RenameRequest](RenameRequest.md) |  | |
+This endpoint does not need any parameter.
 
 ### Return type
 
-[**OperationResult**](OperationResult.md)
+**any**
 
 ### Authorization
 
@@ -926,7 +903,7 @@ No authorization required
 
 ### HTTP request headers
 
-- **Content-Type**: `application/json`
+- **Content-Type**: Not defined
 - **Accept**: `application/json`
 
 
@@ -934,78 +911,6 @@ No authorization required
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 | **200** | Successful Response |  -  |
-| **422** | Validation Error |  -  |
-
-[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
-
-
-## setTaskApiTasksTaskIdPatch
-
-> OperationResult setTaskApiTasksTaskIdPatch(taskId, nodeUpdate)
-
-Set Task
-
-Update a task\&#39;s properties.
-
-### Example
-
-```ts
-import {
-  Configuration,
-  DefaultApi,
-} from '';
-import type { SetTaskApiTasksTaskIdPatchRequest } from '';
-
-async function example() {
-  console.log("🚀 Testing  SDK...");
-  const api = new DefaultApi();
-
-  const body = {
-    // string
-    taskId: taskId_example,
-    // NodeUpdate
-    nodeUpdate: ...,
-  } satisfies SetTaskApiTasksTaskIdPatchRequest;
-
-  try {
-    const data = await api.setTaskApiTasksTaskIdPatch(body);
-    console.log(data);
-  } catch (error) {
-    console.error(error);
-  }
-}
-
-// Run the test
-example().catch(console.error);
-```
-
-### Parameters
-
-
-| Name | Type | Description  | Notes |
-|------------- | ------------- | ------------- | -------------|
-| **taskId** | `string` |  | [Defaults to `undefined`] |
-| **nodeUpdate** | [NodeUpdate](NodeUpdate.md) |  | |
-
-### Return type
-
-[**OperationResult**](OperationResult.md)
-
-### Authorization
-
-No authorization required
-
-### HTTP request headers
-
-- **Content-Type**: `application/json`
-- **Accept**: `application/json`
-
-
-### HTTP response details
-| Status code | Description | Response headers |
-|-------------|-------------|------------------|
-| **200** | Successful Response |  -  |
-| **422** | Validation Error |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
@@ -1124,145 +1029,6 @@ No authorization required
 | Status code | Description | Response headers |
 |-------------|-------------|------------------|
 | **200** | Successful Response |  -  |
-
-[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
-
-
-## unlinkTasksApiLinksDelete
-
-> OperationResult unlinkTasksApiLinksDelete(linkRequest)
-
-Unlink Tasks
-
-Remove a dependency.
-
-### Example
-
-```ts
-import {
-  Configuration,
-  DefaultApi,
-} from '';
-import type { UnlinkTasksApiLinksDeleteRequest } from '';
-
-async function example() {
-  console.log("🚀 Testing  SDK...");
-  const api = new DefaultApi();
-
-  const body = {
-    // LinkRequest
-    linkRequest: ...,
-  } satisfies UnlinkTasksApiLinksDeleteRequest;
-
-  try {
-    const data = await api.unlinkTasksApiLinksDelete(body);
-    console.log(data);
-  } catch (error) {
-    console.error(error);
-  }
-}
-
-// Run the test
-example().catch(console.error);
-```
-
-### Parameters
-
-
-| Name | Type | Description  | Notes |
-|------------- | ------------- | ------------- | -------------|
-| **linkRequest** | [LinkRequest](LinkRequest.md) |  | |
-
-### Return type
-
-[**OperationResult**](OperationResult.md)
-
-### Authorization
-
-No authorization required
-
-### HTTP request headers
-
-- **Content-Type**: `application/json`
-- **Accept**: `application/json`
-
-
-### HTTP response details
-| Status code | Description | Response headers |
-|-------------|-------------|------------------|
-| **200** | Successful Response |  -  |
-| **422** | Validation Error |  -  |
-
-[[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
-
-
-## updatePlanApiPlansPlanIdPatch
-
-> PlanOut updatePlanApiPlansPlanIdPatch(planId, planUpdate)
-
-Update Plan
-
-Update a plan\&#39;s properties.
-
-### Example
-
-```ts
-import {
-  Configuration,
-  DefaultApi,
-} from '';
-import type { UpdatePlanApiPlansPlanIdPatchRequest } from '';
-
-async function example() {
-  console.log("🚀 Testing  SDK...");
-  const api = new DefaultApi();
-
-  const body = {
-    // string
-    planId: planId_example,
-    // PlanUpdate
-    planUpdate: ...,
-  } satisfies UpdatePlanApiPlansPlanIdPatchRequest;
-
-  try {
-    const data = await api.updatePlanApiPlansPlanIdPatch(body);
-    console.log(data);
-  } catch (error) {
-    console.error(error);
-  }
-}
-
-// Run the test
-example().catch(console.error);
-```
-
-### Parameters
-
-
-| Name | Type | Description  | Notes |
-|------------- | ------------- | ------------- | -------------|
-| **planId** | `string` |  | [Defaults to `undefined`] |
-| **planUpdate** | [PlanUpdate](PlanUpdate.md) |  | |
-
-### Return type
-
-[**PlanOut**](PlanOut.md)
-
-### Authorization
-
-No authorization required
-
-### HTTP request headers
-
-- **Content-Type**: `application/json`
-- **Accept**: `application/json`
-
-
-### HTTP response details
-| Status code | Description | Response headers |
-|-------------|-------------|------------------|
-| **200** | Successful Response |  -  |
-| **422** | Validation Error |  -  |
 
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 

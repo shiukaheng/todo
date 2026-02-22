@@ -1,29 +1,27 @@
 
-# DependencyOut
+# BatchResponse
 
-Dependency relationship.
+Response for a batch operation.
 
 ## Properties
 
 Name | Type
 ------------ | -------------
-`id` | string
-`fromId` | string
-`toId` | string
-`createdAt` | number
+`success` | boolean
+`results` | [Array&lt;BatchOperationResult&gt;](BatchOperationResult.md)
+`message` | string
 
 ## Example
 
 ```typescript
-import type { DependencyOut } from ''
+import type { BatchResponse } from ''
 
 // TODO: Update the object below with actual values
 const example = {
-  "id": null,
-  "fromId": null,
-  "toId": null,
-  "createdAt": null,
-} satisfies DependencyOut
+  "success": null,
+  "results": null,
+  "message": null,
+} satisfies BatchResponse
 
 console.log(example)
 
@@ -32,7 +30,7 @@ const exampleJSON: string = JSON.stringify(example)
 console.log(exampleJSON)
 
 // Parse the JSON string back to an object
-const exampleParsed = JSON.parse(exampleJSON) as DependencyOut
+const exampleParsed = JSON.parse(exampleJSON) as BatchResponse
 console.log(exampleParsed)
 ```
 

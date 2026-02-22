@@ -172,7 +172,6 @@ class DisplaySSEPublisher:
             "views": {
                 view.id: {
                     "id": view.id,
-                    "positions": view.positions,
                     "whitelist": view.whitelist,
                     "blacklist": view.blacklist,
                     "created_at": view.created_at,

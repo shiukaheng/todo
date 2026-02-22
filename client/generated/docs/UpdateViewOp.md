@@ -1,29 +1,29 @@
 
-# DependencyOut
+# UpdateViewOp
 
-Dependency relationship.
+Upsert a view. Creates if not exists, replaces provided fields.
 
 ## Properties
 
 Name | Type
 ------------ | -------------
-`id` | string
-`fromId` | string
-`toId` | string
-`createdAt` | number
+`op` | string
+`viewId` | string
+`whitelist` | Array&lt;string&gt;
+`blacklist` | Array&lt;string&gt;
 
 ## Example
 
 ```typescript
-import type { DependencyOut } from ''
+import type { UpdateViewOp } from ''
 
 // TODO: Update the object below with actual values
 const example = {
-  "id": null,
-  "fromId": null,
-  "toId": null,
-  "createdAt": null,
-} satisfies DependencyOut
+  "op": null,
+  "viewId": null,
+  "whitelist": null,
+  "blacklist": null,
+} satisfies UpdateViewOp
 
 console.log(example)
 
@@ -32,7 +32,7 @@ const exampleJSON: string = JSON.stringify(example)
 console.log(exampleJSON)
 
 // Parse the JSON string back to an object
-const exampleParsed = JSON.parse(exampleJSON) as DependencyOut
+const exampleParsed = JSON.parse(exampleJSON) as UpdateViewOp
 console.log(exampleParsed)
 ```
 

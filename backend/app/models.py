@@ -286,11 +286,20 @@ class ViewListOut(BaseModel):
     views: dict[str, ViewOut]
 
 
+class ViewPositionsOut(BaseModel):
+    """View positions response."""
+    positions: dict  # {nodeId: [x, y]}
+
+
+class ViewPositionsIn(BaseModel):
+    """View positions update request."""
+    positions: dict  # {nodeId: [x, y]}
+
+
 class UpdateViewOp(BaseModel):
     """Upsert a view. Creates if not exists, replaces provided fields."""
     op: Literal["update_view"]
     view_id: str
-    positions: dict | None = None  # {nodeId: [x, y], ...} — replaces entire positions
     whitelist: list[str] | None = None  # replaces entire whitelist
     blacklist: list[str] | None = None  # replaces entire blacklist
 

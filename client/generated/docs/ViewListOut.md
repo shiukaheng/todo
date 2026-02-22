@@ -1,29 +1,23 @@
 
-# DependencyOut
+# ViewListOut
 
-Dependency relationship.
+All views.
 
 ## Properties
 
 Name | Type
 ------------ | -------------
-`id` | string
-`fromId` | string
-`toId` | string
-`createdAt` | number
+`views` | [{ [key: string]: ViewOut; }](ViewOut.md)
 
 ## Example
 
 ```typescript
-import type { DependencyOut } from ''
+import type { ViewListOut } from ''
 
 // TODO: Update the object below with actual values
 const example = {
-  "id": null,
-  "fromId": null,
-  "toId": null,
-  "createdAt": null,
-} satisfies DependencyOut
+  "views": null,
+} satisfies ViewListOut
 
 console.log(example)
 
@@ -32,7 +26,7 @@ const exampleJSON: string = JSON.stringify(example)
 console.log(exampleJSON)
 
 // Parse the JSON string back to an object
-const exampleParsed = JSON.parse(exampleJSON) as DependencyOut
+const exampleParsed = JSON.parse(exampleJSON) as ViewListOut
 console.log(exampleParsed)
 ```
 

@@ -1,29 +1,25 @@
 
-# DependencyOut
+# DeleteNodeOp
 
-Dependency relationship.
+Delete a node.
 
 ## Properties
 
 Name | Type
 ------------ | -------------
+`op` | string
 `id` | string
-`fromId` | string
-`toId` | string
-`createdAt` | number
 
 ## Example
 
 ```typescript
-import type { DependencyOut } from ''
+import type { DeleteNodeOp } from ''
 
 // TODO: Update the object below with actual values
 const example = {
+  "op": null,
   "id": null,
-  "fromId": null,
-  "toId": null,
-  "createdAt": null,
-} satisfies DependencyOut
+} satisfies DeleteNodeOp
 
 console.log(example)
 
@@ -32,7 +28,7 @@ const exampleJSON: string = JSON.stringify(example)
 console.log(exampleJSON)
 
 // Parse the JSON string back to an object
-const exampleParsed = JSON.parse(exampleJSON) as DependencyOut
+const exampleParsed = JSON.parse(exampleJSON) as DeleteNodeOp
 console.log(exampleParsed)
 ```
 

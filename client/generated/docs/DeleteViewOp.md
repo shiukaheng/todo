@@ -1,29 +1,25 @@
 
-# DependencyOut
+# DeleteViewOp
 
-Dependency relationship.
+Delete a view.
 
 ## Properties
 
 Name | Type
 ------------ | -------------
+`op` | string
 `id` | string
-`fromId` | string
-`toId` | string
-`createdAt` | number
 
 ## Example
 
 ```typescript
-import type { DependencyOut } from ''
+import type { DeleteViewOp } from ''
 
 // TODO: Update the object below with actual values
 const example = {
+  "op": null,
   "id": null,
-  "fromId": null,
-  "toId": null,
-  "createdAt": null,
-} satisfies DependencyOut
+} satisfies DeleteViewOp
 
 console.log(example)
 
@@ -32,7 +28,7 @@ const exampleJSON: string = JSON.stringify(example)
 console.log(exampleJSON)
 
 // Parse the JSON string back to an object
-const exampleParsed = JSON.parse(exampleJSON) as DependencyOut
+const exampleParsed = JSON.parse(exampleJSON) as DeleteViewOp
 console.log(exampleParsed)
 ```
 

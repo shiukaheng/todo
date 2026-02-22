@@ -71,7 +71,7 @@ export interface NodeOut {
     updatedAt: number | null;
     /**
      * 
-     * @type {number}
+     * @type {boolean}
      * @memberof NodeOut
      */
     calculatedValue: boolean | null;
@@ -83,13 +83,13 @@ export interface NodeOut {
     calculatedDue: number | null;
     /**
      * 
-     * @type {number}
+     * @type {boolean}
      * @memberof NodeOut
      */
     depsClear: boolean | null;
     /**
      * 
-     * @type {number}
+     * @type {boolean}
      * @memberof NodeOut
      */
     isActionable: boolean | null;

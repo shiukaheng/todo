@@ -1,29 +1,23 @@
 
-# DependencyOut
+# BatchRequest
 
-Dependency relationship.
+Batch of operations to execute atomically.
 
 ## Properties
 
 Name | Type
 ------------ | -------------
-`id` | string
-`fromId` | string
-`toId` | string
-`createdAt` | number
+`operations` | [Array&lt;OperationsInner&gt;](OperationsInner.md)
 
 ## Example
 
 ```typescript
-import type { DependencyOut } from ''
+import type { BatchRequest } from ''
 
 // TODO: Update the object below with actual values
 const example = {
-  "id": null,
-  "fromId": null,
-  "toId": null,
-  "createdAt": null,
-} satisfies DependencyOut
+  "operations": null,
+} satisfies BatchRequest
 
 console.log(example)
 
@@ -32,7 +26,7 @@ const exampleJSON: string = JSON.stringify(example)
 console.log(exampleJSON)
 
 // Parse the JSON string back to an object
-const exampleParsed = JSON.parse(exampleJSON) as DependencyOut
+const exampleParsed = JSON.parse(exampleJSON) as BatchRequest
 console.log(exampleParsed)
 ```
 

@@ -34,6 +34,8 @@ from app.models import (
     RenamePlanOp,
     ViewOut,
     ViewListOut,
+    ViewPositionsOut,
+    ViewPositionsIn,
     DisplayBatchRequest,
     UpdateViewOp,
     DeleteViewOp,
@@ -419,6 +421,23 @@ async def get_view(view_id: str):
     return _view_to_out(view)
 
 
+@router.get("/views/{view_id}/positions", response_model=ViewPositionsOut)
+async def get_view_positions(view_id: str):
+    """Get positions for a view."""
+    with get_session() as session:
+        positions = session.execute_read(lambda tx: services.get_view_positions(tx, view_id))
+    if positions is None:
+        raise HTTPException(status_code=404, detail=f"View '{view_id}' not found")
+    return ViewPositionsOut(positions=positions)
+
+
+@router.put("/views/{view_id}/positions", status_code=204)
+async def put_view_positions(view_id: str, body: ViewPositionsIn):
+    """Full overwrite of positions for a view. Does NOT trigger display SSE broadcast."""
+    with get_session() as session:
+        session.execute_write(lambda tx: services.set_view_positions(tx, view_id, body.positions))
+
+
 @router.get("/display/subscribe")
 async def subscribe_display():
     """Subscribe to real-time display layer updates via SSE."""
@@ -430,7 +449,7 @@ def _dispatch_display_operation(tx, op) -> None:
     if isinstance(op, UpdateViewOp):
         services.update_view(
             tx, view_id=op.view_id,
-            positions=op.positions, whitelist=op.whitelist, blacklist=op.blacklist,
+            whitelist=op.whitelist, blacklist=op.blacklist,
         )
     elif isinstance(op, DeleteViewOp):
         found = services.delete_view(tx, op.id)

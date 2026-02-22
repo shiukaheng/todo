@@ -1,29 +1,27 @@
 
-# DependencyOut
+# RenameNodeOp
 
-Dependency relationship.
+Rename a node.
 
 ## Properties
 
 Name | Type
 ------------ | -------------
+`op` | string
 `id` | string
-`fromId` | string
-`toId` | string
-`createdAt` | number
+`newId` | string
 
 ## Example
 
 ```typescript
-import type { DependencyOut } from ''
+import type { RenameNodeOp } from ''
 
 // TODO: Update the object below with actual values
 const example = {
+  "op": null,
   "id": null,
-  "fromId": null,
-  "toId": null,
-  "createdAt": null,
-} satisfies DependencyOut
+  "newId": null,
+} satisfies RenameNodeOp
 
 console.log(example)
 
@@ -32,7 +30,7 @@ const exampleJSON: string = JSON.stringify(example)
 console.log(exampleJSON)
 
 // Parse the JSON string back to an object
-const exampleParsed = JSON.parse(exampleJSON) as DependencyOut
+const exampleParsed = JSON.parse(exampleJSON) as RenameNodeOp
 console.log(exampleParsed)
 ```
 

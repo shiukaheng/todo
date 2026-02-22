@@ -1,29 +1,23 @@
 
-# DependencyOut
+# DisplayBatchRequest
 
-Dependency relationship.
+Batch of display operations to execute atomically.
 
 ## Properties
 
 Name | Type
 ------------ | -------------
-`id` | string
-`fromId` | string
-`toId` | string
-`createdAt` | number
+`operations` | [Array&lt;OperationsInner1&gt;](OperationsInner1.md)
 
 ## Example
 
 ```typescript
-import type { DependencyOut } from ''
+import type { DisplayBatchRequest } from ''
 
 // TODO: Update the object below with actual values
 const example = {
-  "id": null,
-  "fromId": null,
-  "toId": null,
-  "createdAt": null,
-} satisfies DependencyOut
+  "operations": null,
+} satisfies DisplayBatchRequest
 
 console.log(example)
 
@@ -32,7 +26,7 @@ const exampleJSON: string = JSON.stringify(example)
 console.log(exampleJSON)
 
 // Parse the JSON string back to an object
-const exampleParsed = JSON.parse(exampleJSON) as DependencyOut
+const exampleParsed = JSON.parse(exampleJSON) as DisplayBatchRequest
 console.log(exampleParsed)
 ```
 

@@ -1,29 +1,23 @@
 
-# DependencyOut
+# ViewPositionsOut
 
-Dependency relationship.
+View positions response.
 
 ## Properties
 
 Name | Type
 ------------ | -------------
-`id` | string
-`fromId` | string
-`toId` | string
-`createdAt` | number
+`positions` | { [key: string]: any; }
 
 ## Example
 
 ```typescript
-import type { DependencyOut } from ''
+import type { ViewPositionsOut } from ''
 
 // TODO: Update the object below with actual values
 const example = {
-  "id": null,
-  "fromId": null,
-  "toId": null,
-  "createdAt": null,
-} satisfies DependencyOut
+  "positions": null,
+} satisfies ViewPositionsOut
 
 console.log(example)
 
@@ -32,7 +26,7 @@ const exampleJSON: string = JSON.stringify(example)
 console.log(exampleJSON)
 
 // Parse the JSON string back to an object
-const exampleParsed = JSON.parse(exampleJSON) as DependencyOut
+const exampleParsed = JSON.parse(exampleJSON) as ViewPositionsOut
 console.log(exampleParsed)
 ```
 

@@ -1,29 +1,29 @@
 
-# DependencyOut
+# CreatePlanOp
 
-Dependency relationship.
+Create a plan.
 
 ## Properties
 
 Name | Type
 ------------ | -------------
+`op` | string
 `id` | string
-`fromId` | string
-`toId` | string
-`createdAt` | number
+`text` | string
+`steps` | [Array&lt;StepData&gt;](StepData.md)
 
 ## Example
 
 ```typescript
-import type { DependencyOut } from ''
+import type { CreatePlanOp } from ''
 
 // TODO: Update the object below with actual values
 const example = {
+  "op": null,
   "id": null,
-  "fromId": null,
-  "toId": null,
-  "createdAt": null,
-} satisfies DependencyOut
+  "text": null,
+  "steps": null,
+} satisfies CreatePlanOp
 
 console.log(example)
 
@@ -32,7 +32,7 @@ const exampleJSON: string = JSON.stringify(example)
 console.log(exampleJSON)
 
 // Parse the JSON string back to an object
-const exampleParsed = JSON.parse(exampleJSON) as DependencyOut
+const exampleParsed = JSON.parse(exampleJSON) as CreatePlanOp
 console.log(exampleParsed)
 ```
 

@@ -38,7 +38,7 @@ export interface DependencyOut {
      */
     toId: string;
     /**
-     *
+     * 
      * @type {number}
      * @memberof DependencyOut
      */

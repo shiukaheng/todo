@@ -1,47 +1,44 @@
 
-# NodeOut
+# OperationsInner
 
-Node response with calculated fields.
 
 ## Properties
 
 Name | Type
 ------------ | -------------
+`op` | string
 `id` | string
 `text` | string
-`nodeType` | [NodeType](NodeType.md)
 `completed` | number
+`nodeType` | [NodeType](NodeType.md)
 `due` | number
-`createdAt` | number
-`updatedAt` | number
-`calculatedValue` | boolean
-`calculatedDue` | number
-`depsClear` | boolean
-`isActionable` | boolean
-`parents` | Array&lt;string&gt;
-`children` | Array&lt;string&gt;
+`depends` | Array&lt;string&gt;
+`blocks` | Array&lt;string&gt;
+`newId` | string
+`fromId` | string
+`toId` | string
+`steps` | [Array&lt;StepData&gt;](StepData.md)
 
 ## Example
 
 ```typescript
-import type { NodeOut } from ''
+import type { OperationsInner } from ''
 
 // TODO: Update the object below with actual values
 const example = {
+  "op": null,
   "id": null,
   "text": null,
-  "nodeType": null,
   "completed": null,
+  "nodeType": null,
   "due": null,
-  "createdAt": null,
-  "updatedAt": null,
-  "calculatedValue": null,
-  "calculatedDue": null,
-  "depsClear": null,
-  "isActionable": null,
-  "parents": null,
-  "children": null,
-} satisfies NodeOut
+  "depends": null,
+  "blocks": null,
+  "newId": null,
+  "fromId": null,
+  "toId": null,
+  "steps": null,
+} satisfies OperationsInner
 
 console.log(example)
 
@@ -50,7 +47,7 @@ const exampleJSON: string = JSON.stringify(example)
 console.log(exampleJSON)
 
 // Parse the JSON string back to an object
-const exampleParsed = JSON.parse(exampleJSON) as NodeOut
+const exampleParsed = JSON.parse(exampleJSON) as OperationsInner
 console.log(exampleParsed)
 ```
 
