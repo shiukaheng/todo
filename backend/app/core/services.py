@@ -1093,7 +1093,7 @@ def update_view(
     # Read back final state
     record = tx.run(
         "MATCH (v:View {id: $id}) "
-        "RETURN v.positions_json AS positions_json, "
+        "RETURN v.id AS id, v.positions_json AS positions_json, "
         "v.whitelist_json AS whitelist_json, v.blacklist_json AS blacklist_json, "
         "v.created_at AS created_at, v.updated_at AS updated_at",
         id=view_id,
@@ -1136,5 +1136,4 @@ def list_views(tx) -> list[View]:
         "ORDER BY v.updated_at DESC"
     )
     return [_record_to_view(r) for r in result]
-
 
