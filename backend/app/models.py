@@ -286,10 +286,13 @@ class ViewListOut(BaseModel):
     views: dict[str, ViewOut]
 
 
-class CreateViewOp(BaseModel):
-    """Create a view."""
-    op: Literal["create_view"]
-    id: str
+class UpdateViewOp(BaseModel):
+    """Upsert a view. Creates if not exists, replaces provided fields."""
+    op: Literal["update_view"]
+    view_id: str
+    positions: dict | None = None  # {nodeId: [x, y], ...} — replaces entire positions
+    whitelist: list[str] | None = None  # replaces entire whitelist
+    blacklist: list[str] | None = None  # replaces entire blacklist
 
 
 class DeleteViewOp(BaseModel):
@@ -298,42 +301,10 @@ class DeleteViewOp(BaseModel):
     id: str
 
 
-class UpdatePositionsOp(BaseModel):
-    """Merge positions into a view."""
-    op: Literal["update_positions"]
-    view_id: str
-    positions: dict  # {nodeId: [x, y], ...}
-
-
-class RemovePositionsOp(BaseModel):
-    """Remove positions from a view."""
-    op: Literal["remove_positions"]
-    view_id: str
-    node_ids: list[str]
-
-
-class SetWhitelistOp(BaseModel):
-    """Replace whitelist of a view."""
-    op: Literal["set_whitelist"]
-    view_id: str
-    node_ids: list[str]
-
-
-class SetBlacklistOp(BaseModel):
-    """Replace blacklist of a view."""
-    op: Literal["set_blacklist"]
-    view_id: str
-    node_ids: list[str]
-
-
 DisplayBatchOperation = Annotated[
     Union[
-        CreateViewOp,
+        UpdateViewOp,
         DeleteViewOp,
-        UpdatePositionsOp,
-        RemovePositionsOp,
-        SetWhitelistOp,
-        SetBlacklistOp,
     ],
     Field(discriminator="op"),
 ]

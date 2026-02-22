@@ -1050,24 +1050,56 @@ def _record_to_view(record) -> View:
     )
 
 
-def create_view(tx, id: str) -> View:
-    """Create a new empty View."""
+def update_view(
+    tx,
+    view_id: str,
+    positions: dict | None = None,
+    whitelist: list[str] | None = None,
+    blacklist: list[str] | None = None,
+) -> View:
+    """Upsert a View. Creates if not exists, replaces provided fields."""
     import json as _json
     now = int(time.time())
-    existing = tx.run("MATCH (v:View {id: $id}) RETURN v", id=id).single()
-    if existing:
-        raise ValueError(f"View '{id}' already exists")
 
+    # MERGE: create with defaults if not exists
     tx.run(
-        "CREATE (v:View {id: $id, positions_json: $pos, whitelist_json: $wl, "
-        "blacklist_json: $bl, created_at: $now, updated_at: $now})",
-        id=id,
-        pos=_json.dumps({}),
-        wl=_json.dumps([]),
-        bl=_json.dumps([]),
+        "MERGE (v:View {id: $id}) "
+        "ON CREATE SET v.positions_json = $empty_pos, v.whitelist_json = $empty_list, "
+        "v.blacklist_json = $empty_list, v.created_at = $now, v.updated_at = $now",
+        id=view_id,
+        empty_pos=_json.dumps({}),
+        empty_list=_json.dumps([]),
         now=now,
     )
-    return View(id=id, positions={}, whitelist=[], blacklist=[], created_at=now, updated_at=now)
+
+    # Build SET clause for provided fields
+    set_parts = ["v.updated_at = $now"]
+    params: dict = {"id": view_id, "now": now}
+    if positions is not None:
+        set_parts.append("v.positions_json = $pos")
+        params["pos"] = _json.dumps(positions)
+    if whitelist is not None:
+        set_parts.append("v.whitelist_json = $wl")
+        params["wl"] = _json.dumps(whitelist)
+    if blacklist is not None:
+        set_parts.append("v.blacklist_json = $bl")
+        params["bl"] = _json.dumps(blacklist)
+
+    tx.run(
+        f"MATCH (v:View {{id: $id}}) SET {', '.join(set_parts)}",
+        **params,
+    )
+
+    # Read back final state
+    record = tx.run(
+        "MATCH (v:View {id: $id}) "
+        "RETURN v.positions_json AS positions_json, "
+        "v.whitelist_json AS whitelist_json, v.blacklist_json AS blacklist_json, "
+        "v.created_at AS created_at, v.updated_at AS updated_at",
+        id=view_id,
+    ).single()
+
+    return _record_to_view(record)
 
 
 def delete_view(tx, id: str) -> bool:
@@ -1106,70 +1138,3 @@ def list_views(tx) -> list[View]:
     return [_record_to_view(r) for r in result]
 
 
-def update_positions(tx, view_id: str, positions: dict) -> bool:
-    """Merge positions into a View (read-modify-write). Returns True if found."""
-    import json as _json
-    now = int(time.time())
-    result = tx.run(
-        "MATCH (v:View {id: $id}) RETURN v.positions_json AS positions_json",
-        id=view_id,
-    )
-    record = result.single()
-    if not record:
-        return False
-
-    current = _json.loads(record["positions_json"] or "{}")
-    current.update(positions)
-    tx.run(
-        "MATCH (v:View {id: $id}) SET v.positions_json = $pos, v.updated_at = $now",
-        id=view_id, pos=_json.dumps(current), now=now,
-    )
-    return True
-
-
-def remove_positions(tx, view_id: str, node_ids: list[str]) -> bool:
-    """Remove position keys from a View. Returns True if found."""
-    import json as _json
-    now = int(time.time())
-    result = tx.run(
-        "MATCH (v:View {id: $id}) RETURN v.positions_json AS positions_json",
-        id=view_id,
-    )
-    record = result.single()
-    if not record:
-        return False
-
-    current = _json.loads(record["positions_json"] or "{}")
-    for nid in node_ids:
-        current.pop(nid, None)
-    tx.run(
-        "MATCH (v:View {id: $id}) SET v.positions_json = $pos, v.updated_at = $now",
-        id=view_id, pos=_json.dumps(current), now=now,
-    )
-    return True
-
-
-def set_whitelist(tx, view_id: str, node_ids: list[str]) -> bool:
-    """Replace whitelist of a View. Returns True if found."""
-    import json as _json
-    now = int(time.time())
-    result = tx.run(
-        "MATCH (v:View {id: $id}) "
-        "SET v.whitelist_json = $wl, v.updated_at = $now "
-        "RETURN v",
-        id=view_id, wl=_json.dumps(node_ids), now=now,
-    )
-    return result.single() is not None
-
-
-def set_blacklist(tx, view_id: str, node_ids: list[str]) -> bool:
-    """Replace blacklist of a View. Returns True if found."""
-    import json as _json
-    now = int(time.time())
-    result = tx.run(
-        "MATCH (v:View {id: $id}) "
-        "SET v.blacklist_json = $bl, v.updated_at = $now "
-        "RETURN v",
-        id=view_id, bl=_json.dumps(node_ids), now=now,
-    )
-    return result.single() is not None

@@ -8,45 +8,20 @@ import { mapValues } from '../runtime';
  * @export
  */
 export type DisplayBatchOperation =
-    | CreateViewOp
-    | DeleteViewOp
-    | UpdatePositionsOp
-    | RemovePositionsOp
-    | SetWhitelistOp
-    | SetBlacklistOp;
+    | UpdateViewOp
+    | DeleteViewOp;
 
-export interface CreateViewOp {
-    op: 'create_view';
-    id: string;
+export interface UpdateViewOp {
+    op: 'update_view';
+    viewId: string;
+    positions?: { [key: string]: Array<number> };
+    whitelist?: Array<string>;
+    blacklist?: Array<string>;
 }
 
 export interface DeleteViewOp {
     op: 'delete_view';
     id: string;
-}
-
-export interface UpdatePositionsOp {
-    op: 'update_positions';
-    viewId: string;
-    positions: { [key: string]: Array<number> };
-}
-
-export interface RemovePositionsOp {
-    op: 'remove_positions';
-    viewId: string;
-    nodeIds: Array<string>;
-}
-
-export interface SetWhitelistOp {
-    op: 'set_whitelist';
-    viewId: string;
-    nodeIds: Array<string>;
-}
-
-export interface SetBlacklistOp {
-    op: 'set_blacklist';
-    viewId: string;
-    nodeIds: Array<string>;
 }
 
 /**
@@ -61,26 +36,16 @@ export function DisplayBatchOperationToJSON(value: DisplayBatchOperation): any {
     const base: any = { op: value.op };
 
     switch (value.op) {
-        case 'create_view':
-            return { ...base, id: (value as CreateViewOp).id };
+        case 'update_view': {
+            const v = value as UpdateViewOp;
+            const result: any = { ...base, view_id: v.viewId };
+            if (v.positions !== undefined) result.positions = v.positions;
+            if (v.whitelist !== undefined) result.whitelist = v.whitelist;
+            if (v.blacklist !== undefined) result.blacklist = v.blacklist;
+            return result;
+        }
         case 'delete_view':
             return { ...base, id: (value as DeleteViewOp).id };
-        case 'update_positions': {
-            const v = value as UpdatePositionsOp;
-            return { ...base, view_id: v.viewId, positions: v.positions };
-        }
-        case 'remove_positions': {
-            const v = value as RemovePositionsOp;
-            return { ...base, view_id: v.viewId, node_ids: v.nodeIds };
-        }
-        case 'set_whitelist': {
-            const v = value as SetWhitelistOp;
-            return { ...base, view_id: v.viewId, node_ids: v.nodeIds };
-        }
-        case 'set_blacklist': {
-            const v = value as SetBlacklistOp;
-            return { ...base, view_id: v.viewId, node_ids: v.nodeIds };
-        }
         default:
             return { ...base, ...(value as any) };
     }

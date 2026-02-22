@@ -35,12 +35,8 @@ from app.models import (
     ViewOut,
     ViewListOut,
     DisplayBatchRequest,
-    CreateViewOp,
+    UpdateViewOp,
     DeleteViewOp,
-    UpdatePositionsOp,
-    RemovePositionsOp,
-    SetWhitelistOp,
-    SetBlacklistOp,
 )
 from app.api.sse import publisher, display_publisher
 
@@ -431,28 +427,15 @@ async def subscribe_display():
 
 def _dispatch_display_operation(tx, op) -> None:
     """Dispatch a single display operation to the appropriate service function."""
-    if isinstance(op, CreateViewOp):
-        services.create_view(tx, id=op.id)
+    if isinstance(op, UpdateViewOp):
+        services.update_view(
+            tx, view_id=op.view_id,
+            positions=op.positions, whitelist=op.whitelist, blacklist=op.blacklist,
+        )
     elif isinstance(op, DeleteViewOp):
         found = services.delete_view(tx, op.id)
         if not found:
             raise ValueError(f"View '{op.id}' not found")
-    elif isinstance(op, UpdatePositionsOp):
-        found = services.update_positions(tx, view_id=op.view_id, positions=op.positions)
-        if not found:
-            raise ValueError(f"View '{op.view_id}' not found")
-    elif isinstance(op, RemovePositionsOp):
-        found = services.remove_positions(tx, view_id=op.view_id, node_ids=op.node_ids)
-        if not found:
-            raise ValueError(f"View '{op.view_id}' not found")
-    elif isinstance(op, SetWhitelistOp):
-        found = services.set_whitelist(tx, view_id=op.view_id, node_ids=op.node_ids)
-        if not found:
-            raise ValueError(f"View '{op.view_id}' not found")
-    elif isinstance(op, SetBlacklistOp):
-        found = services.set_blacklist(tx, view_id=op.view_id, node_ids=op.node_ids)
-        if not found:
-            raise ValueError(f"View '{op.view_id}' not found")
     else:
         raise ValueError(f"Unknown display operation type: {type(op)}")
 
