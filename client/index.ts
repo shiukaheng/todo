@@ -12,3 +12,12 @@
 
 export * from './generated';
 export { subscribeToState, subscribeToDisplay, subscribeToTasks } from './sse';
+
+// Backward-compatible aliases for generated discriminated-union types.
+// The OpenAPI generator names these OperationsInner / OperationsInner1.
+export type { OperationsInner as BatchOperation } from './generated';
+export type { OperationsInner1 as DisplayBatchOperation } from './generated';
+
+// The old client exposed `displayBatch`; the new generator names it differently.
+// Re-export the request param type for callers that referenced it.
+export type { DisplayBatchOperationsApiDisplayBatchPostRequest as DisplayBatchOperationsRequest } from './generated';
