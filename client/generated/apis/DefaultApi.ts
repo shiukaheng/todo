@@ -61,11 +61,11 @@ import {
     ViewPositionsOutToJSON,
 } from '../models/index';
 
-export interface BatchOperationsApiBatchPostRequest {
+export interface BatchOperationRequest {
     batchRequest: BatchRequest;
 }
 
-export interface DisplayBatchOperationsApiDisplayBatchPostRequest {
+export interface DisplayBatchOperationRequest {
     displayBatchRequest: DisplayBatchRequest;
 }
 
@@ -99,11 +99,11 @@ export class DefaultApi extends runtime.BaseAPI {
      * Execute multiple operations atomically in a single transaction.
      * Batch Operations
      */
-    async batchOperationsApiBatchPostRaw(requestParameters: BatchOperationsApiBatchPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BatchResponse>> {
+    async batchRaw(requestParameters: BatchOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BatchResponse>> {
         if (requestParameters['batchRequest'] == null) {
             throw new runtime.RequiredError(
                 'batchRequest',
-                'Required parameter "batchRequest" was null or undefined when calling batchOperationsApiBatchPost().'
+                'Required parameter "batchRequest" was null or undefined when calling batch().'
             );
         }
 
@@ -131,8 +131,8 @@ export class DefaultApi extends runtime.BaseAPI {
      * Execute multiple operations atomically in a single transaction.
      * Batch Operations
      */
-    async batchOperationsApiBatchPost(requestParameters: BatchOperationsApiBatchPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BatchResponse> {
-        const response = await this.batchOperationsApiBatchPostRaw(requestParameters, initOverrides);
+    async batch(requestParameters: BatchOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BatchResponse> {
+        const response = await this.batchRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -140,11 +140,11 @@ export class DefaultApi extends runtime.BaseAPI {
      * Execute multiple display operations atomically in a single transaction.
      * Display Batch Operations
      */
-    async displayBatchOperationsApiDisplayBatchPostRaw(requestParameters: DisplayBatchOperationsApiDisplayBatchPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BatchResponse>> {
+    async displayBatchRaw(requestParameters: DisplayBatchOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BatchResponse>> {
         if (requestParameters['displayBatchRequest'] == null) {
             throw new runtime.RequiredError(
                 'displayBatchRequest',
-                'Required parameter "displayBatchRequest" was null or undefined when calling displayBatchOperationsApiDisplayBatchPost().'
+                'Required parameter "displayBatchRequest" was null or undefined when calling displayBatch().'
             );
         }
 
@@ -172,8 +172,8 @@ export class DefaultApi extends runtime.BaseAPI {
      * Execute multiple display operations atomically in a single transaction.
      * Display Batch Operations
      */
-    async displayBatchOperationsApiDisplayBatchPost(requestParameters: DisplayBatchOperationsApiDisplayBatchPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BatchResponse> {
-        const response = await this.displayBatchOperationsApiDisplayBatchPostRaw(requestParameters, initOverrides);
+    async displayBatch(requestParameters: DisplayBatchOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BatchResponse> {
+        const response = await this.displayBatchRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

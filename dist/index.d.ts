@@ -13,4 +13,3 @@ export * from './generated';
 export { subscribeToState, subscribeToDisplay, subscribeToTasks } from './sse';
 export type { OperationsInner as BatchOperation } from './generated';
 export type { OperationsInner1 as DisplayBatchOperation } from './generated';
-export type { DisplayBatchOperationsApiDisplayBatchPostRequest as DisplayBatchOperationsRequest } from './generated';
