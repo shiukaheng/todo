@@ -10,7 +10,7 @@ Name | Type
 `id` | string
 `text` | string
 `nodeType` | [NodeType](NodeType.md)
-`completed` | number
+`completed` | [CompletedInfo](CompletedInfo.md)
 `due` | number
 `createdAt` | number
 `updatedAt` | number

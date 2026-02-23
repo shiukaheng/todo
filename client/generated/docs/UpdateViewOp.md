@@ -9,8 +9,9 @@ Name | Type
 ------------ | -------------
 `op` | string
 `viewId` | string
-`whitelist` | Array&lt;string&gt;
-`blacklist` | Array&lt;string&gt;
+`includeRecursive` | Array&lt;string&gt;
+`excludeRecursive` | Array&lt;string&gt;
+`hideCompletedFor` | number
 
 ## Example
 
@@ -21,8 +22,9 @@ import type { UpdateViewOp } from ''
 const example = {
   "op": null,
   "viewId": null,
-  "whitelist": null,
-  "blacklist": null,
+  "includeRecursive": null,
+  "excludeRecursive": null,
+  "hideCompletedFor": null,
 } satisfies UpdateViewOp
 
 console.log(example)

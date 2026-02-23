@@ -13,6 +13,13 @@
  */
 
 import { mapValues } from '../runtime';
+import type { CompletedInfo } from './CompletedInfo';
+import {
+    CompletedInfoFromJSON,
+    CompletedInfoFromJSONTyped,
+    CompletedInfoToJSON,
+    CompletedInfoToJSONTyped,
+} from './CompletedInfo';
 import type { NodeType } from './NodeType';
 import {
     NodeTypeFromJSON,
@@ -47,10 +54,10 @@ export interface NodeOut {
     nodeType: NodeType;
     /**
      * 
-     * @type {number}
+     * @type {CompletedInfo}
      * @memberof NodeOut
      */
-    completed: number | null;
+    completed: CompletedInfo | null;
     /**
      * 
      * @type {number}
@@ -142,7 +149,7 @@ export function NodeOutFromJSONTyped(json: any, ignoreDiscriminator: boolean): N
         'id': json['id'],
         'text': json['text'],
         'nodeType': NodeTypeFromJSON(json['node_type']),
-        'completed': json['completed'],
+        'completed': CompletedInfoFromJSON(json['completed']),
         'due': json['due'],
         'createdAt': json['created_at'],
         'updatedAt': json['updated_at'],
@@ -169,7 +176,7 @@ export function NodeOutToJSONTyped(value?: NodeOut | null, ignoreDiscriminator: 
         'id': value['id'],
         'text': value['text'],
         'node_type': NodeTypeToJSON(value['nodeType']),
-        'completed': value['completed'],
+        'completed': CompletedInfoToJSON(value['completed']),
         'due': value['due'],
         'created_at': value['createdAt'],
         'updated_at': value['updatedAt'],
