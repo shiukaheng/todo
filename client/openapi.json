@@ -200,7 +200,7 @@
       "post": {
         "summary": "Batch Operations",
         "description": "Execute multiple operations atomically in a single transaction.",
-        "operationId": "batch_operations_api_batch_post",
+        "operationId": "batch",
         "requestBody": {
           "content": {
             "application/json": {
@@ -396,7 +396,7 @@
       "post": {
         "summary": "Display Batch Operations",
         "description": "Execute multiple display operations atomically in a single transaction.",
-        "operationId": "display_batch_operations_api_display_batch_post",
+        "operationId": "displayBatch",
         "requestBody": {
           "content": {
             "application/json": {
