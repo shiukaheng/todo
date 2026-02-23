@@ -9,7 +9,7 @@ Name | Type
 `op` | string
 `id` | string
 `text` | string
-`completed` | [CompletedInfo](CompletedInfo.md)
+`completed` | number
 `nodeType` | [NodeType](NodeType.md)
 `due` | number
 `depends` | Array&lt;string&gt;

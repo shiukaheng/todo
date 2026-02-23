@@ -13,13 +13,6 @@
  */
 
 import { mapValues } from '../runtime';
-import type { CompletedInfo } from './CompletedInfo';
-import {
-    CompletedInfoFromJSON,
-    CompletedInfoFromJSONTyped,
-    CompletedInfoToJSON,
-    CompletedInfoToJSONTyped,
-} from './CompletedInfo';
 import type { NodeType } from './NodeType';
 import {
     NodeTypeFromJSON,
@@ -54,10 +47,10 @@ export interface CreateNodeOp {
     text?: string | null;
     /**
      * 
-     * @type {CompletedInfo}
+     * @type {number}
      * @memberof CreateNodeOp
      */
-    completed?: CompletedInfo | null;
+    completed?: number | null;
     /**
      * 
      * @type {NodeType}
@@ -116,7 +109,7 @@ export function CreateNodeOpFromJSONTyped(json: any, ignoreDiscriminator: boolea
         'op': json['op'],
         'id': json['id'],
         'text': json['text'] == null ? undefined : json['text'],
-        'completed': json['completed'] == null ? undefined : CompletedInfoFromJSON(json['completed']),
+        'completed': json['completed'] == null ? undefined : json['completed'],
         'nodeType': json['node_type'] == null ? undefined : NodeTypeFromJSON(json['node_type']),
         'due': json['due'] == null ? undefined : json['due'],
         'depends': json['depends'] == null ? undefined : json['depends'],
@@ -138,7 +131,7 @@ export function CreateNodeOpToJSONTyped(value?: CreateNodeOp | null, ignoreDiscr
         'op': value['op'],
         'id': value['id'],
         'text': value['text'],
-        'completed': CompletedInfoToJSON(value['completed']),
+        'completed': value['completed'],
         'node_type': NodeTypeToJSON(value['nodeType']),
         'due': value['due'],
         'depends': value['depends'],

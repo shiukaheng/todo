@@ -9,9 +9,8 @@ Name | Type
 ------------ | -------------
 `id` | string
 `positions` | { [key: string]: any; }
-`includeRecursive` | Array&lt;string&gt;
-`excludeRecursive` | Array&lt;string&gt;
-`hideCompletedFor` | number
+`whitelist` | Array&lt;string&gt;
+`blacklist` | Array&lt;string&gt;
 `createdAt` | number
 `updatedAt` | number
 
@@ -24,9 +23,8 @@ import type { ViewOut } from ''
 const example = {
   "id": null,
   "positions": null,
-  "includeRecursive": null,
-  "excludeRecursive": null,
-  "hideCompletedFor": null,
+  "whitelist": null,
+  "blacklist": null,
   "createdAt": null,
   "updatedAt": null,
 } satisfies ViewOut

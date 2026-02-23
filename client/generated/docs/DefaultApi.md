@@ -4,8 +4,8 @@ All URIs are relative to *http://localhost*
 
 | Method | HTTP request | Description |
 |------------- | ------------- | -------------|
-| [**batch**](DefaultApi.md#batchoperation) | **POST** /api/batch | Batch Operations |
-| [**displayBatch**](DefaultApi.md#displaybatchoperation) | **POST** /api/display/batch | Display Batch Operations |
+| [**batchOperationsApiBatchPost**](DefaultApi.md#batchoperationsapibatchpost) | **POST** /api/batch | Batch Operations |
+| [**displayBatchOperationsApiDisplayBatchPost**](DefaultApi.md#displaybatchoperationsapidisplaybatchpost) | **POST** /api/display/batch | Display Batch Operations |
 | [**getPlanApiPlansPlanIdGet**](DefaultApi.md#getplanapiplansplanidget) | **GET** /api/plans/{plan_id} | Get Plan |
 | [**getStateApiStateGet**](DefaultApi.md#getstateapistateget) | **GET** /api/state | Get State |
 | [**getTaskApiTasksTaskIdGet**](DefaultApi.md#gettaskapitaskstaskidget) | **GET** /api/tasks/{task_id} | Get Task |
@@ -23,9 +23,9 @@ All URIs are relative to *http://localhost*
 
 
 
-## batch
+## batchOperationsApiBatchPost
 
-> BatchResponse batch(batchRequest)
+> BatchResponse batchOperationsApiBatchPost(batchRequest)
 
 Batch Operations
 
@@ -38,7 +38,7 @@ import {
   Configuration,
   DefaultApi,
 } from '';
-import type { BatchOperationRequest } from '';
+import type { BatchOperationsApiBatchPostRequest } from '';
 
 async function example() {
   console.log("🚀 Testing  SDK...");
@@ -47,10 +47,10 @@ async function example() {
   const body = {
     // BatchRequest
     batchRequest: ...,
-  } satisfies BatchOperationRequest;
+  } satisfies BatchOperationsApiBatchPostRequest;
 
   try {
-    const data = await api.batch(body);
+    const data = await api.batchOperationsApiBatchPost(body);
     console.log(data);
   } catch (error) {
     console.error(error);
@@ -91,9 +91,9 @@ No authorization required
 [[Back to top]](#) [[Back to API list]](../README.md#api-endpoints) [[Back to Model list]](../README.md#models) [[Back to README]](../README.md)
 
 
-## displayBatch
+## displayBatchOperationsApiDisplayBatchPost
 
-> BatchResponse displayBatch(displayBatchRequest)
+> BatchResponse displayBatchOperationsApiDisplayBatchPost(displayBatchRequest)
 
 Display Batch Operations
 
@@ -106,7 +106,7 @@ import {
   Configuration,
   DefaultApi,
 } from '';
-import type { DisplayBatchOperationRequest } from '';
+import type { DisplayBatchOperationsApiDisplayBatchPostRequest } from '';
 
 async function example() {
   console.log("🚀 Testing  SDK...");
@@ -115,10 +115,10 @@ async function example() {
   const body = {
     // DisplayBatchRequest
     displayBatchRequest: ...,
-  } satisfies DisplayBatchOperationRequest;
+  } satisfies DisplayBatchOperationsApiDisplayBatchPostRequest;
 
   try {
-    const data = await api.displayBatch(body);
+    const data = await api.displayBatchOperationsApiDisplayBatchPost(body);
     console.log(data);
   } catch (error) {
     console.error(error);

@@ -36,19 +36,13 @@ export interface ViewOut {
      * @type {Array<string>}
      * @memberof ViewOut
      */
-    includeRecursive: Array<string>;
+    whitelist: Array<string>;
     /**
      * 
      * @type {Array<string>}
      * @memberof ViewOut
      */
-    excludeRecursive: Array<string>;
-    /**
-     * 
-     * @type {number}
-     * @memberof ViewOut
-     */
-    hideCompletedFor?: number | null;
+    blacklist: Array<string>;
     /**
      * 
      * @type {number}
@@ -69,8 +63,8 @@ export interface ViewOut {
 export function instanceOfViewOut(value: object): value is ViewOut {
     if (!('id' in value) || value['id'] === undefined) return false;
     if (!('positions' in value) || value['positions'] === undefined) return false;
-    if (!('includeRecursive' in value) || value['includeRecursive'] === undefined) return false;
-    if (!('excludeRecursive' in value) || value['excludeRecursive'] === undefined) return false;
+    if (!('whitelist' in value) || value['whitelist'] === undefined) return false;
+    if (!('blacklist' in value) || value['blacklist'] === undefined) return false;
     if (!('createdAt' in value) || value['createdAt'] === undefined) return false;
     if (!('updatedAt' in value) || value['updatedAt'] === undefined) return false;
     return true;
@@ -88,9 +82,8 @@ export function ViewOutFromJSONTyped(json: any, ignoreDiscriminator: boolean): V
         
         'id': json['id'],
         'positions': json['positions'],
-        'includeRecursive': json['include_recursive'],
-        'excludeRecursive': json['exclude_recursive'],
-        'hideCompletedFor': json['hide_completed_for'] == null ? undefined : json['hide_completed_for'],
+        'whitelist': json['whitelist'],
+        'blacklist': json['blacklist'],
         'createdAt': json['created_at'],
         'updatedAt': json['updated_at'],
     };
@@ -109,9 +102,8 @@ export function ViewOutToJSONTyped(value?: ViewOut | null, ignoreDiscriminator: 
         
         'id': value['id'],
         'positions': value['positions'],
-        'include_recursive': value['includeRecursive'],
-        'exclude_recursive': value['excludeRecursive'],
-        'hide_completed_for': value['hideCompletedFor'],
+        'whitelist': value['whitelist'],
+        'blacklist': value['blacklist'],
         'created_at': value['createdAt'],
         'updated_at': value['updatedAt'],
     };

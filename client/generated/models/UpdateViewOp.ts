@@ -36,19 +36,13 @@ export interface UpdateViewOp {
      * @type {Array<string>}
      * @memberof UpdateViewOp
      */
-    includeRecursive?: Array<string> | null;
+    whitelist?: Array<string> | null;
     /**
      * 
      * @type {Array<string>}
      * @memberof UpdateViewOp
      */
-    excludeRecursive?: Array<string> | null;
-    /**
-     * 
-     * @type {number}
-     * @memberof UpdateViewOp
-     */
-    hideCompletedFor?: number | null;
+    blacklist?: Array<string> | null;
 }
 
 
@@ -82,9 +76,8 @@ export function UpdateViewOpFromJSONTyped(json: any, ignoreDiscriminator: boolea
         
         'op': json['op'],
         'viewId': json['view_id'],
-        'includeRecursive': json['include_recursive'] == null ? undefined : json['include_recursive'],
-        'excludeRecursive': json['exclude_recursive'] == null ? undefined : json['exclude_recursive'],
-        'hideCompletedFor': json['hide_completed_for'] == null ? undefined : json['hide_completed_for'],
+        'whitelist': json['whitelist'] == null ? undefined : json['whitelist'],
+        'blacklist': json['blacklist'] == null ? undefined : json['blacklist'],
     };
 }
 
@@ -101,9 +94,8 @@ export function UpdateViewOpToJSONTyped(value?: UpdateViewOp | null, ignoreDiscr
         
         'op': value['op'],
         'view_id': value['viewId'],
-        'include_recursive': value['includeRecursive'],
-        'exclude_recursive': value['excludeRecursive'],
-        'hide_completed_for': value['hideCompletedFor'],
+        'whitelist': value['whitelist'],
+        'blacklist': value['blacklist'],
     };
 }
 

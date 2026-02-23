@@ -4,7 +4,6 @@ docs/AppState.md
 docs/BatchOperationResult.md
 docs/BatchRequest.md
 docs/BatchResponse.md
-docs/CompletedInfo.md
 docs/CreateNodeOp.md
 docs/CreatePlanOp.md
 docs/DefaultApi.md
@@ -41,7 +40,6 @@ models/AppState.ts
 models/BatchOperationResult.ts
 models/BatchRequest.ts
 models/BatchResponse.ts
-models/CompletedInfo.ts
 models/CreateNodeOp.ts
 models/CreatePlanOp.ts
 models/DeleteNodeOp.ts

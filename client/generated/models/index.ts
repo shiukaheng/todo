@@ -4,7 +4,6 @@ export * from './AppState';
 export * from './BatchOperationResult';
 export * from './BatchRequest';
 export * from './BatchResponse';
-export * from './CompletedInfo';
 export * from './CreateNodeOp';
 export * from './CreatePlanOp';
 export * from './DeleteNodeOp';
