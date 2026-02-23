@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import functools
+import json as _json
 import logging
 import time
 import uuid
@@ -15,12 +16,19 @@ VALID_NODE_TYPES = frozenset(["Task", "And", "Or", "Not", "ExactlyOne"])
 
 
 @dataclass
+class CompletedInfo:
+    """Completion status with timestamp of last toggle."""
+    value: bool
+    modified: int  # Unix timestamp of last toggle
+
+
+@dataclass
 class Node:
     """Node data (any type)."""
     id: str
     node_type: str  # "Task", "And", "Or", "Not", "ExactlyOne" - DERIVED from labels
     text: str = ""
-    completed: int | None = None  # Unix timestamp when completed (None = not completed)
+    completed: CompletedInfo | None = None  # {value, modified} or None
     due: int | None = None
     created_at: int | None = None
     updated_at: int | None = None
@@ -80,11 +88,18 @@ def _record_to_node(record) -> Node:
     node_data = dict(record["n"])
     labels = record["labels"]
 
+    # Deserialize completed_json → CompletedInfo
+    completed = None
+    completed_json_str = node_data.get("completed_json")
+    if completed_json_str:
+        ci = _json.loads(completed_json_str)
+        completed = CompletedInfo(value=ci["value"], modified=ci["modified"])
+
     return Node(
         id=node_data.get("id", ""),
         node_type=_extract_node_type(labels),
         text=node_data.get("text", ""),
-        completed=node_data.get("completed"),  # None for gates
+        completed=completed,
         due=node_data.get("due"),
         created_at=node_data.get("created_at"),
         updated_at=node_data.get("updated_at"),
@@ -134,7 +149,7 @@ def _build_value_calculator(nodes: dict[str, Node], deps: dict[str, list[str]]):
     """Build a memoized value calculator closure.
 
     calculated_value = own_value AND deps_clear
-    - Task: own_value = completed, deps_clear = all(deps.calculated_value)
+    - Task: own_value = completed?.value == True, deps_clear = all(deps.calculated_value)
     - Gates: own_value = true (identity), deps_clear = gate_logic(deps.calculated_value)
     """
     @functools.lru_cache(maxsize=1024)
@@ -146,8 +161,9 @@ def _build_value_calculator(nodes: dict[str, Node], deps: dict[str, list[str]]):
         deps_clear = _calculate_gate_logic(node.node_type, dep_values)
 
         if node.node_type == "Task":
-            # Task: calculated_value = completed AND deps_clear
-            return (node.completed is not None) and deps_clear
+            # Task: calculated_value = completed.value AND deps_clear
+            own_value = node.completed is not None and node.completed.value is True
+            return own_value and deps_clear
         else:
             # Gates: calculated_value = deps_clear (no own value)
             return deps_clear
@@ -244,7 +260,11 @@ def get_node(tx, id: str) -> EnrichedNode | None:
         enriched.calculated_due = calc_due(id)
         dep_values = [calc_value(d) for d in deps_fwd.get(id, [])]
         enriched.deps_clear = _calculate_gate_logic(enriched.node.node_type, dep_values)
-        enriched.is_actionable = enriched.node.node_type == "Task" and enriched.node.completed is None and enriched.deps_clear
+        enriched.is_actionable = (
+            enriched.node.node_type == "Task"
+            and (enriched.node.completed is None or enriched.node.completed.value is not True)
+            and enriched.deps_clear
+        )
 
     return enriched
 
@@ -270,7 +290,11 @@ def list_nodes(tx) -> tuple[list[EnrichedNode], list[Dependency], bool]:
             # deps_clear = gate-specific evaluation of dependencies
             dep_values = [calc_value(d) for d in deps_fwd.get(e.node.id, [])]
             e.deps_clear = _calculate_gate_logic(e.node.node_type, dep_values)
-            e.is_actionable = e.node.node_type == "Task" and e.node.completed is None and e.deps_clear
+            e.is_actionable = (
+                e.node.node_type == "Task"
+                and (e.node.completed is None or e.node.completed.value is not True)
+                and e.deps_clear
+            )
 
     return enriched, dependencies, graph_has_cycles
 
@@ -285,7 +309,7 @@ def add_node(
     id: str,
     node_type: str = "Task",
     text: str | None = None,
-    completed: int | None = None,
+    completed: CompletedInfo | None = None,
     due: int | None = None,
     depends: list[str] | None = None,
     blocks: list[str] | None = None,
@@ -305,9 +329,9 @@ def add_node(
     if due is not None:
         props["due"] = due
 
-    # Only add completed for Task nodes (None = not completed, so don't set property)
+    # Only add completed for Task nodes — stored as completed_json
     if node_type == "Task" and completed is not None:
-        props["completed"] = completed
+        props["completed_json"] = _json.dumps({"value": completed.value, "modified": completed.modified})
 
     # Create with appropriate labels
     labels = f":Node:{node_type}"
@@ -323,7 +347,7 @@ def add_node(
         id=id,
         node_type=node_type,
         text=props.get("text", ""),
-        completed=props.get("completed"),
+        completed=completed,
         due=props.get("due"),
         created_at=now,
         updated_at=now,
@@ -348,7 +372,7 @@ def _propagate_uncompletion(tx, task_id: str, now: int) -> list[str]:
     result = tx.run(
         """
         MATCH (target:Node {id: $task_id})<-[:DEPENDS_ON]-(parent:Task)
-        WHERE parent.completed IS NOT NULL
+        WHERE parent.completed_json IS NOT NULL
         RETURN parent.id AS parent_id
         """,
         task_id=task_id
@@ -358,11 +382,13 @@ def _propagate_uncompletion(tx, task_id: str, now: int) -> list[str]:
 
     # Recursively uncomplete each dependent task
     for dep_id in dependent_ids:
-        # Mark this dependent as incomplete
+        # Mark this dependent as incomplete: set completed_json to {value: false, modified: now}
+        uncomplete_json = _json.dumps({"value": False, "modified": now})
         tx.run(
-            "MATCH (n:Task {id: $id}) REMOVE n.completed SET n.updated_at = $now",
+            "MATCH (n:Task {id: $id}) SET n.completed_json = $cj, n.updated_at = $now",
             id=dep_id,
-            now=now
+            cj=uncomplete_json,
+            now=now,
         )
         updated_ids.append(dep_id)
 
@@ -378,7 +404,7 @@ def update_node(
     id: str,
     node_type: str | None = None,
     text: str | None = None,
-    completed: int | None | object = _UNSET,
+    completed: CompletedInfo | None | object = _UNSET,
     due: int | None | object = _UNSET,
 ) -> bool:
     """Update an existing node. Returns True if found."""
@@ -409,24 +435,24 @@ def update_node(
             logger.debug(f"Changing node type: {current_type} -> {node_type}")
 
             # Handle completed property based on type transition
-            # Use WHERE clause to ensure atomicity - fails if type changed between read and write
             if node_type == "Task" and current_type != "Task":
-                # Converting TO Task - add completed property
+                # Converting TO Task - add completed_json property
                 completed_value = completed if completed is not _UNSET else None
+                cj = _json.dumps({"value": completed_value.value, "modified": completed_value.modified}) if completed_value is not None and completed_value is not _UNSET else None
                 query = (
                     f"MATCH (n:{current_type} {{id: $id}}) "
-                    f"WHERE $current_type IN labels(n) "  # Atomic check
+                    f"WHERE $current_type IN labels(n) "
                     f"REMOVE n:{current_type} "
-                    f"SET n:{node_type}, n.updated_at = $now, n.completed = $completed "
+                    f"SET n:{node_type}, n.updated_at = $now, n.completed_json = $cj "
                     "RETURN n"
                 )
-                result = tx.run(query, id=id, now=now, completed=completed_value, current_type=current_type)
+                result = tx.run(query, id=id, now=now, cj=cj, current_type=current_type)
             elif current_type == "Task" and node_type != "Task":
-                # Converting FROM Task - remove completed property
+                # Converting FROM Task - remove completed_json property
                 query = (
                     f"MATCH (n:{current_type} {{id: $id}}) "
-                    f"WHERE $current_type IN labels(n) "  # Atomic check
-                    f"REMOVE n:{current_type}, n.completed "
+                    f"WHERE $current_type IN labels(n) "
+                    f"REMOVE n:{current_type}, n.completed_json "
                     f"SET n:{node_type}, n.updated_at = $now "
                     "RETURN n"
                 )
@@ -435,7 +461,7 @@ def update_node(
                 # Simple type change without completed handling
                 query = (
                     f"MATCH (n:{current_type} {{id: $id}}) "
-                    f"WHERE $current_type IN labels(n) "  # Atomic check
+                    f"WHERE $current_type IN labels(n) "
                     f"REMOVE n:{current_type} "
                     f"SET n:{node_type}, n.updated_at = $now "
                     "RETURN n"
@@ -445,7 +471,6 @@ def update_node(
             # Check if update succeeded
             updated_record = result.single()
             if not updated_record:
-                # Type changed between our read and write, or node disappeared
                 raise ValueError(
                     f"Failed to change node type from {current_type} to {node_type}. "
                     f"Node may have been modified concurrently."
@@ -455,45 +480,67 @@ def update_node(
 
     # Check if we're marking a task as incomplete (for propagation)
     propagate_uncompletion = False
-    if completed is not _UNSET and completed is None:
-        # Query current state to see if we're transitioning from complete to incomplete
-        # Only Task nodes have completed property, so check node type
+    if completed is not _UNSET and completed is not None and isinstance(completed, CompletedInfo) and not completed.value:
+        # Marking as incomplete — check if currently complete
         result = tx.run(
             "MATCH (n:Node {id: $id}) "
-            "WHERE 'Task' IN labels(n) AND n.completed IS NOT NULL "
-            "RETURN n.completed AS current_completed",
+            "WHERE 'Task' IN labels(n) AND n.completed_json IS NOT NULL "
+            "RETURN n.completed_json AS cj",
             id=id
         )
         record = result.single()
-        if record:
-            # We're transitioning from complete to incomplete - need to propagate
-            propagate_uncompletion = True
+        if record and record["cj"]:
+            ci = _json.loads(record["cj"])
+            if ci.get("value") is True:
+                propagate_uncompletion = True
+    elif completed is not _UNSET and completed is None:
+        # Setting to null (clearing) — also check if was complete
+        result = tx.run(
+            "MATCH (n:Node {id: $id}) "
+            "WHERE 'Task' IN labels(n) AND n.completed_json IS NOT NULL "
+            "RETURN n.completed_json AS cj",
+            id=id
+        )
+        record = result.single()
+        if record and record["cj"]:
+            ci = _json.loads(record["cj"])
+            if ci.get("value") is True:
+                propagate_uncompletion = True
 
-    # Update other properties
-    props = {}
+    # Build SET/REMOVE clauses
+    set_parts = []
+    remove_parts = []
+    params: dict = {"id": id, "now": now}
+
     if text is not None:
-        props["text"] = text
-    # Handle completed: distinguish between not provided (_UNSET), explicitly None (uncomplete), or a timestamp
+        set_parts.append("n.text = $text")
+        params["text"] = text
+
+    # Handle completed: CompletedInfo → completed_json, None → remove
     if completed is not _UNSET:
         if completed is None:
-            props["completed"] = None  # Will remove property in Neo4j
+            remove_parts.append("n.completed_json")
         else:
-            props["completed"] = completed
-    # Handle due: distinguish between not provided (_UNSET), explicitly None (clear), or a value
+            set_parts.append("n.completed_json = $cj")
+            params["cj"] = _json.dumps({"value": completed.value, "modified": completed.modified})
+
+    # Handle due
     if due is not _UNSET:
         if due is None:
-            # Explicitly clearing due - we'll need to remove it separately
-            # For now, set to null in Neo4j (which removes the property)
-            props["due"] = None
+            remove_parts.append("n.due")
         else:
-            props["due"] = due
+            set_parts.append("n.due = $due")
+            params["due"] = due
 
-    if props:
-        props["updated_at"] = now
-        result = tx.run(
-            "MATCH (n:Node {id: $id}) SET n += $props RETURN n",
-            id=id, props=props
-        )
+    if set_parts or remove_parts:
+        set_parts.append("n.updated_at = $now")
+        query = f"MATCH (n:Node {{id: $id}}) "
+        if set_parts:
+            query += f"SET {', '.join(set_parts)} "
+        if remove_parts:
+            query += f"REMOVE {', '.join(remove_parts)} "
+        query += "RETURN n"
+        result = tx.run(query, **params)
         if result.single() is None:
             return False
 
@@ -702,6 +749,45 @@ def migrate_completed_bool_to_timestamp(tx) -> None:
     )
 
 
+def migrate_completed_to_json(tx) -> None:
+    """Migrate completed from plain int to completed_json {value, modified}.
+
+    Old format: n.completed = <unix_timestamp> (int, means completed at that time)
+    New format: n.completed_json = '{"value": true, "modified": <unix_timestamp>}'
+    Nodes without completed (null / gates) need no migration.
+    """
+    result = tx.run(
+        "MATCH (n:Node) WHERE n.completed IS NOT NULL "
+        "RETURN count(n) AS cnt"
+    )
+    count = result.single()["cnt"]
+    if count > 0:
+        tx.run(
+            "MATCH (n:Node) WHERE n.completed IS NOT NULL "
+            "WITH n, n.completed AS ts "
+            "SET n.completed_json = '{\"value\": true, \"modified\": ' + toString(ts) + '}' "
+            "REMOVE n.completed"
+        )
+        logger.info(f"Migrated {count} nodes from completed (int) to completed_json")
+
+
+def migrate_view_field_names(tx) -> None:
+    """Migrate view field names from whitelist/blacklist to include_recursive/exclude_recursive."""
+    result = tx.run(
+        "MATCH (v:View) WHERE v.whitelist_json IS NOT NULL OR v.blacklist_json IS NOT NULL "
+        "RETURN count(v) AS cnt"
+    )
+    count = result.single()["cnt"]
+    if count > 0:
+        tx.run(
+            "MATCH (v:View) WHERE v.whitelist_json IS NOT NULL OR v.blacklist_json IS NOT NULL "
+            "SET v.include_recursive_json = COALESCE(v.whitelist_json, '[]'), "
+            "    v.exclude_recursive_json = COALESCE(v.blacklist_json, '[]') "
+            "REMOVE v.whitelist_json, v.blacklist_json"
+        )
+        logger.info(f"Migrated {count} views from whitelist/blacklist to include_recursive/exclude_recursive")
+
+
 def migrate_dependency_created_at(tx) -> None:
     """Backfill created_at on DEPENDS_ON relationships where missing."""
     now = int(time.time())
@@ -726,7 +812,7 @@ def prime_tokens(tx) -> None:
     """Create and delete a dummy node to register property keys."""
     tx.run(
         "CREATE (n:__InitTokenRegistration:Node:Task "
-        "{id: '__init__', due: 0, completed: 0, created_at: 0, updated_at: 0, text: ''}) "
+        "{id: '__init__', due: 0, completed_json: '{\"value\":true,\"modified\":0}', created_at: 0, updated_at: 0, text: ''}) "
         "CREATE (n)-[:DEPENDS_ON {id: '__init__', created_at: 0}]->(n) "
         "DETACH DELETE n"
     )
@@ -1031,20 +1117,21 @@ class View:
     """Display view with positions and filters."""
     id: str
     positions: dict  # {nodeId: [x, y], ...}
-    whitelist: list[str]
-    blacklist: list[str]
+    include_recursive: list[str]
+    exclude_recursive: list[str]
+    hide_completed_for: int | None = None
     created_at: int | None = None
     updated_at: int | None = None
 
 
 def _record_to_view(record) -> View:
     """Convert Neo4j record to View."""
-    import json as _json
     return View(
         id=record["id"],
         positions=_json.loads(record["positions_json"] or "{}"),
-        whitelist=_json.loads(record["whitelist_json"] or "[]"),
-        blacklist=_json.loads(record["blacklist_json"] or "[]"),
+        include_recursive=_json.loads(record["include_recursive_json"] or "[]"),
+        exclude_recursive=_json.loads(record["exclude_recursive_json"] or "[]"),
+        hide_completed_for=record.get("hide_completed_for"),
         created_at=record["created_at"],
         updated_at=record["updated_at"],
     )
@@ -1065,14 +1152,13 @@ def get_view_positions(tx, view_id: str) -> dict | None:
 
 def set_view_positions(tx, view_id: str, positions: dict) -> None:
     """Upsert a view with new positions (only touches positions_json and updated_at)."""
-    import json as _json
     now = int(time.time())
 
     # MERGE: create with defaults if not exists
     tx.run(
         "MERGE (v:View {id: $id}) "
-        "ON CREATE SET v.positions_json = $pos, v.whitelist_json = $empty_list, "
-        "v.blacklist_json = $empty_list, v.created_at = $now, v.updated_at = $now "
+        "ON CREATE SET v.positions_json = $pos, v.include_recursive_json = $empty_list, "
+        "v.exclude_recursive_json = $empty_list, v.created_at = $now, v.updated_at = $now "
         "ON MATCH SET v.positions_json = $pos, v.updated_at = $now",
         id=view_id,
         pos=_json.dumps(positions),
@@ -1084,18 +1170,18 @@ def set_view_positions(tx, view_id: str, positions: dict) -> None:
 def update_view(
     tx,
     view_id: str,
-    whitelist: list[str] | None = None,
-    blacklist: list[str] | None = None,
+    include_recursive: list[str] | None = None,
+    exclude_recursive: list[str] | None = None,
+    hide_completed_for: int | None | object = _UNSET,
 ) -> View:
     """Upsert a View. Creates if not exists, replaces provided fields."""
-    import json as _json
     now = int(time.time())
 
     # MERGE: create with defaults if not exists
     tx.run(
         "MERGE (v:View {id: $id}) "
-        "ON CREATE SET v.positions_json = $empty_pos, v.whitelist_json = $empty_list, "
-        "v.blacklist_json = $empty_list, v.created_at = $now, v.updated_at = $now",
+        "ON CREATE SET v.positions_json = $empty_pos, v.include_recursive_json = $empty_list, "
+        "v.exclude_recursive_json = $empty_list, v.created_at = $now, v.updated_at = $now",
         id=view_id,
         empty_pos=_json.dumps({}),
         empty_list=_json.dumps([]),
@@ -1105,12 +1191,15 @@ def update_view(
     # Build SET clause for provided fields
     set_parts = ["v.updated_at = $now"]
     params: dict = {"id": view_id, "now": now}
-    if whitelist is not None:
-        set_parts.append("v.whitelist_json = $wl")
-        params["wl"] = _json.dumps(whitelist)
-    if blacklist is not None:
-        set_parts.append("v.blacklist_json = $bl")
-        params["bl"] = _json.dumps(blacklist)
+    if include_recursive is not None:
+        set_parts.append("v.include_recursive_json = $ir")
+        params["ir"] = _json.dumps(include_recursive)
+    if exclude_recursive is not None:
+        set_parts.append("v.exclude_recursive_json = $er")
+        params["er"] = _json.dumps(exclude_recursive)
+    if hide_completed_for is not _UNSET:
+        set_parts.append("v.hide_completed_for = $hcf")
+        params["hcf"] = hide_completed_for
 
     tx.run(
         f"MATCH (v:View {{id: $id}}) SET {', '.join(set_parts)}",
@@ -1121,7 +1210,8 @@ def update_view(
     record = tx.run(
         "MATCH (v:View {id: $id}) "
         "RETURN v.id AS id, v.positions_json AS positions_json, "
-        "v.whitelist_json AS whitelist_json, v.blacklist_json AS blacklist_json, "
+        "v.include_recursive_json AS include_recursive_json, v.exclude_recursive_json AS exclude_recursive_json, "
+        "v.hide_completed_for AS hide_completed_for, "
         "v.created_at AS created_at, v.updated_at AS updated_at",
         id=view_id,
     ).single()
@@ -1143,7 +1233,8 @@ def get_view(tx, id: str) -> View | None:
     result = tx.run(
         "MATCH (v:View {id: $id}) "
         "RETURN v.id AS id, v.positions_json AS positions_json, "
-        "v.whitelist_json AS whitelist_json, v.blacklist_json AS blacklist_json, "
+        "v.include_recursive_json AS include_recursive_json, v.exclude_recursive_json AS exclude_recursive_json, "
+        "v.hide_completed_for AS hide_completed_for, "
         "v.created_at AS created_at, v.updated_at AS updated_at",
         id=id,
     )
@@ -1158,7 +1249,8 @@ def list_views(tx) -> list[View]:
     result = tx.run(
         "MATCH (v:View) "
         "RETURN v.id AS id, v.positions_json AS positions_json, "
-        "v.whitelist_json AS whitelist_json, v.blacklist_json AS blacklist_json, "
+        "v.include_recursive_json AS include_recursive_json, v.exclude_recursive_json AS exclude_recursive_json, "
+        "v.hide_completed_for AS hide_completed_for, "
         "v.created_at AS created_at, v.updated_at AS updated_at "
         "ORDER BY v.updated_at DESC"
     )

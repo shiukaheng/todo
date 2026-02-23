@@ -17,10 +17,16 @@ class NodeType(str, Enum):
     EXACTLY_ONE = "ExactlyOne"
 
 
+class CompletedInfo(BaseModel):
+    """Completion status with timestamp of last toggle."""
+    value: bool
+    modified: int  # Unix timestamp of last toggle
+
+
 class NodeBase(BaseModel):
     """Base node properties."""
     text: str | None = None
-    completed: int | None = None  # Unix timestamp when completed (null = not completed)
+    completed: CompletedInfo | None = None  # {value, modified} or null for gates/uncompleted
     node_type: NodeType = NodeType.TASK  # NEW: replaces 'inferred'
     due: int | None = None
 
@@ -35,7 +41,7 @@ class NodeCreate(NodeBase):
 class NodeUpdate(BaseModel):
     """Node update request."""
     text: str | None = None
-    completed: int | None = None
+    completed: CompletedInfo | None = None
     node_type: NodeType | None = None  # NEW: can change node type
     due: int | None = None
 
@@ -45,7 +51,7 @@ class NodeOut(BaseModel):
     id: str
     text: str
     node_type: NodeType  # NEW: derived from labels
-    completed: int | None  # Unix timestamp when completed (None = not completed / gate node)
+    completed: CompletedInfo | None  # {value, modified} or None for gates/uncompleted
     due: int | None
     created_at: int | None
     updated_at: int | None
@@ -157,7 +163,7 @@ class CreateNodeOp(BaseModel):
     op: Literal["create_node"]
     id: str
     text: str | None = None
-    completed: int | None = None
+    completed: CompletedInfo | None = None
     node_type: NodeType = NodeType.TASK
     due: int | None = None
     depends: list[str] | None = None
@@ -169,7 +175,7 @@ class UpdateNodeOp(BaseModel):
     op: Literal["update_node"]
     id: str
     text: str | None = None
-    completed: int | None = None
+    completed: CompletedInfo | None = None
     node_type: NodeType | None = None
     due: int | None = None
 
@@ -275,8 +281,9 @@ class ViewOut(BaseModel):
     """View response."""
     id: str
     positions: dict  # {nodeId: [x, y], ...}
-    whitelist: list[str]
-    blacklist: list[str]
+    include_recursive: list[str]
+    exclude_recursive: list[str]
+    hide_completed_for: int | None = None
     created_at: int | None
     updated_at: int | None
 
@@ -300,8 +307,9 @@ class UpdateViewOp(BaseModel):
     """Upsert a view. Creates if not exists, replaces provided fields."""
     op: Literal["update_view"]
     view_id: str
-    whitelist: list[str] | None = None  # replaces entire whitelist
-    blacklist: list[str] | None = None  # replaces entire blacklist
+    include_recursive: list[str] | None = None  # replaces entire include_recursive
+    exclude_recursive: list[str] | None = None  # replaces entire exclude_recursive
+    hide_completed_for: int | None = None
 
 
 class DeleteViewOp(BaseModel):

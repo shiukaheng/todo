@@ -97,7 +97,7 @@ class SSEPublisher:
                     "id": et.node.id,
                     "text": et.node.text,
                     "node_type": et.node.node_type,
-                    "completed": et.node.completed,
+                    "completed": {"value": et.node.completed.value, "modified": et.node.completed.modified} if et.node.completed else None,
                     "due": et.node.due,
                     "created_at": et.node.created_at,
                     "updated_at": et.node.updated_at,
@@ -172,8 +172,9 @@ class DisplaySSEPublisher:
             "views": {
                 view.id: {
                     "id": view.id,
-                    "whitelist": view.whitelist,
-                    "blacklist": view.blacklist,
+                    "include_recursive": view.include_recursive,
+                    "exclude_recursive": view.exclude_recursive,
+                    "hide_completed_for": view.hide_completed_for,
                     "created_at": view.created_at,
                     "updated_at": view.updated_at,
                 }

@@ -32,6 +32,7 @@ from app.models import (
     UpdatePlanOp,
     DeletePlanOp,
     RenamePlanOp,
+    CompletedInfo as CompletedInfoModel,
     ViewOut,
     ViewListOut,
     ViewPositionsOut,
@@ -43,6 +44,13 @@ from app.models import (
 from app.api.sse import publisher, display_publisher
 
 router = APIRouter()
+
+
+def _completed_to_out(ci: services.CompletedInfo | None) -> CompletedInfoModel | None:
+    """Convert service CompletedInfo to Pydantic model."""
+    if ci is None:
+        return None
+    return CompletedInfoModel(value=ci.value, modified=ci.modified)
 
 
 def _dep_to_out(dep: services.Dependency) -> DependencyOut:
@@ -103,7 +111,7 @@ async def get_state():
             id=t.node.id,
             text=t.node.text,
             node_type=t.node.node_type,
-            completed=t.node.completed,
+            completed=_completed_to_out(t.node.completed),
             due=t.node.due,
             created_at=t.node.created_at,
             updated_at=t.node.updated_at,
@@ -173,7 +181,7 @@ async def list_tasks():
                 id=t.node.id,
                 text=t.node.text,
                 node_type=t.node.node_type,
-                completed=t.node.completed,
+                completed=_completed_to_out(t.node.completed),
                 due=t.node.due,
                 created_at=t.node.created_at,
                 updated_at=t.node.updated_at,
@@ -209,7 +217,7 @@ async def get_task(task_id: str):
         id=node.node.id,
         text=node.node.text,
         node_type=node.node.node_type,
-        completed=node.node.completed,
+        completed=_completed_to_out(node.node.completed),
         due=node.node.due,
         created_at=node.node.created_at,
         updated_at=node.node.updated_at,
@@ -281,6 +289,10 @@ async def init_db():
         session.execute_write(services.migrate_completed_bool_to_timestamp)
     with get_session() as session:
         session.execute_write(services.migrate_dependency_created_at)
+    with get_session() as session:
+        session.execute_write(services.migrate_completed_to_json)
+    with get_session() as session:
+        session.execute_write(services.migrate_view_field_names)
     return OperationResult(success=True, message="Database initialized and migrated")
 
 
@@ -292,28 +304,35 @@ async def init_db():
 def _dispatch_operation(tx, op) -> None:
     """Dispatch a single operation to the appropriate service function."""
     if isinstance(op, CreateNodeOp):
+        # Convert Pydantic CompletedInfo to service CompletedInfo
+        completed_svc = None
+        if op.completed is not None:
+            completed_svc = services.CompletedInfo(value=op.completed.value, modified=op.completed.modified)
         services.add_node(
             tx,
             id=op.id,
             node_type=op.node_type.value if op.node_type else "Task",
             text=op.text,
-            completed=op.completed,
+            completed=completed_svc,
             due=op.due,
             depends=op.depends,
             blocks=op.blocks,
         )
     elif isinstance(op, UpdateNodeOp):
         update_data = op.model_dump(exclude_unset=True)
-        kwargs: dict = {"id": op.id}
+        kwargs_node: dict = {"id": op.id}
         if "node_type" in update_data:
-            kwargs["node_type"] = op.node_type.value if op.node_type else None
+            kwargs_node["node_type"] = op.node_type.value if op.node_type else None
         if "text" in update_data:
-            kwargs["text"] = op.text
+            kwargs_node["text"] = op.text
         if "completed" in update_data:
-            kwargs["completed"] = op.completed  # int timestamp or None (to uncomplete)
+            if op.completed is not None:
+                kwargs_node["completed"] = services.CompletedInfo(value=op.completed.value, modified=op.completed.modified)
+            else:
+                kwargs_node["completed"] = None
         if "due" in update_data:
-            kwargs["due"] = op.due
-        found = services.update_node(tx, **kwargs)
+            kwargs_node["due"] = op.due
+        found = services.update_node(tx, **kwargs_node)
         if not found:
             raise ValueError(f"Node '{op.id}' not found")
     elif isinstance(op, DeleteNodeOp):
@@ -396,8 +415,9 @@ def _view_to_out(view: services.View) -> ViewOut:
     return ViewOut(
         id=view.id,
         positions=view.positions,
-        whitelist=view.whitelist,
-        blacklist=view.blacklist,
+        include_recursive=view.include_recursive,
+        exclude_recursive=view.exclude_recursive,
+        hide_completed_for=view.hide_completed_for,
         created_at=view.created_at,
         updated_at=view.updated_at,
     )
@@ -447,10 +467,14 @@ async def subscribe_display():
 def _dispatch_display_operation(tx, op) -> None:
     """Dispatch a single display operation to the appropriate service function."""
     if isinstance(op, UpdateViewOp):
-        services.update_view(
-            tx, view_id=op.view_id,
-            whitelist=op.whitelist, blacklist=op.blacklist,
-        )
+        kwargs: dict = {"view_id": op.view_id}
+        if op.include_recursive is not None:
+            kwargs["include_recursive"] = op.include_recursive
+        if op.exclude_recursive is not None:
+            kwargs["exclude_recursive"] = op.exclude_recursive
+        if op.hide_completed_for is not None:
+            kwargs["hide_completed_for"] = op.hide_completed_for
+        services.update_view(tx, **kwargs)
     elif isinstance(op, DeleteViewOp):
         found = services.delete_view(tx, op.id)
         if not found:
