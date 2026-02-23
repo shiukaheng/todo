@@ -19,7 +19,6 @@ exports.UpdateNodeOpFromJSON = UpdateNodeOpFromJSON;
 exports.UpdateNodeOpFromJSONTyped = UpdateNodeOpFromJSONTyped;
 exports.UpdateNodeOpToJSON = UpdateNodeOpToJSON;
 exports.UpdateNodeOpToJSONTyped = UpdateNodeOpToJSONTyped;
-const CompletedInfo_1 = require("./CompletedInfo");
 const NodeType_1 = require("./NodeType");
 /**
  * @export
@@ -48,7 +47,7 @@ function UpdateNodeOpFromJSONTyped(json, ignoreDiscriminator) {
         'op': json['op'],
         'id': json['id'],
         'text': json['text'] == null ? undefined : json['text'],
-        'completed': json['completed'] == null ? undefined : (0, CompletedInfo_1.CompletedInfoFromJSON)(json['completed']),
+        'completed': json['completed'] == null ? undefined : json['completed'],
         'nodeType': json['node_type'] == null ? undefined : (0, NodeType_1.NodeTypeFromJSON)(json['node_type']),
         'due': json['due'] == null ? undefined : json['due'],
     };
@@ -64,7 +63,7 @@ function UpdateNodeOpToJSONTyped(value, ignoreDiscriminator = false) {
         'op': value['op'],
         'id': value['id'],
         'text': value['text'],
-        'completed': (0, CompletedInfo_1.CompletedInfoToJSON)(value['completed']),
+        'completed': value['completed'],
         'node_type': (0, NodeType_1.NodeTypeToJSON)(value['nodeType']),
         'due': value['due'],
     };

@@ -57,9 +57,9 @@ class DefaultApi extends runtime.BaseAPI {
      * Execute multiple operations atomically in a single transaction.
      * Batch Operations
      */
-    async batchRaw(requestParameters, initOverrides) {
+    async batchOperationsApiBatchPostRaw(requestParameters, initOverrides) {
         if (requestParameters['batchRequest'] == null) {
-            throw new runtime.RequiredError('batchRequest', 'Required parameter "batchRequest" was null or undefined when calling batch().');
+            throw new runtime.RequiredError('batchRequest', 'Required parameter "batchRequest" was null or undefined when calling batchOperationsApiBatchPost().');
         }
         const queryParameters = {};
         const headerParameters = {};
@@ -78,17 +78,17 @@ class DefaultApi extends runtime.BaseAPI {
      * Execute multiple operations atomically in a single transaction.
      * Batch Operations
      */
-    async batch(requestParameters, initOverrides) {
-        const response = await this.batchRaw(requestParameters, initOverrides);
+    async batchOperationsApiBatchPost(requestParameters, initOverrides) {
+        const response = await this.batchOperationsApiBatchPostRaw(requestParameters, initOverrides);
         return await response.value();
     }
     /**
      * Execute multiple display operations atomically in a single transaction.
      * Display Batch Operations
      */
-    async displayBatchRaw(requestParameters, initOverrides) {
+    async displayBatchOperationsApiDisplayBatchPostRaw(requestParameters, initOverrides) {
         if (requestParameters['displayBatchRequest'] == null) {
-            throw new runtime.RequiredError('displayBatchRequest', 'Required parameter "displayBatchRequest" was null or undefined when calling displayBatch().');
+            throw new runtime.RequiredError('displayBatchRequest', 'Required parameter "displayBatchRequest" was null or undefined when calling displayBatchOperationsApiDisplayBatchPost().');
         }
         const queryParameters = {};
         const headerParameters = {};
@@ -107,8 +107,8 @@ class DefaultApi extends runtime.BaseAPI {
      * Execute multiple display operations atomically in a single transaction.
      * Display Batch Operations
      */
-    async displayBatch(requestParameters, initOverrides) {
-        const response = await this.displayBatchRaw(requestParameters, initOverrides);
+    async displayBatchOperationsApiDisplayBatchPost(requestParameters, initOverrides) {
+        const response = await this.displayBatchOperationsApiDisplayBatchPostRaw(requestParameters, initOverrides);
         return await response.value();
     }
     /**

@@ -26,13 +26,17 @@ function instanceOfViewOut(value) {
         return false;
     if (!('positions' in value) || value['positions'] === undefined)
         return false;
-    if (!('includeRecursive' in value) || value['includeRecursive'] === undefined)
+    if (!('whitelist' in value) || value['whitelist'] === undefined)
         return false;
-    if (!('excludeRecursive' in value) || value['excludeRecursive'] === undefined)
+    if (!('blacklist' in value) || value['blacklist'] === undefined)
         return false;
     if (!('createdAt' in value) || value['createdAt'] === undefined)
         return false;
     if (!('updatedAt' in value) || value['updatedAt'] === undefined)
+        return false;
+    if (!('includeRecursive' in value) || value['includeRecursive'] === undefined)
+        return false;
+    if (!('excludeRecursive' in value) || value['excludeRecursive'] === undefined)
         return false;
     return true;
 }
@@ -46,11 +50,13 @@ function ViewOutFromJSONTyped(json, ignoreDiscriminator) {
     return {
         'id': json['id'],
         'positions': json['positions'],
+        'whitelist': json['whitelist'],
+        'blacklist': json['blacklist'],
+        'createdAt': json['created_at'],
+        'updatedAt': json['updated_at'],
         'includeRecursive': json['include_recursive'],
         'excludeRecursive': json['exclude_recursive'],
         'hideCompletedFor': json['hide_completed_for'] == null ? undefined : json['hide_completed_for'],
-        'createdAt': json['created_at'],
-        'updatedAt': json['updated_at'],
     };
 }
 function ViewOutToJSON(json) {
@@ -63,10 +69,12 @@ function ViewOutToJSONTyped(value, ignoreDiscriminator = false) {
     return {
         'id': value['id'],
         'positions': value['positions'],
+        'whitelist': value['whitelist'],
+        'blacklist': value['blacklist'],
+        'created_at': value['createdAt'],
+        'updated_at': value['updatedAt'],
         'include_recursive': value['includeRecursive'],
         'exclude_recursive': value['excludeRecursive'],
         'hide_completed_for': value['hideCompletedFor'],
-        'created_at': value['createdAt'],
-        'updated_at': value['updatedAt'],
     };
 }

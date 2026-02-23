@@ -9,7 +9,6 @@
  * https://openapi-generator.tech
  * Do not edit the class manually.
  */
-import type { CompletedInfo } from './CompletedInfo';
 import type { NodeType } from './NodeType';
 /**
  * Node response with calculated fields.
@@ -37,10 +36,10 @@ export interface NodeOut {
     nodeType: NodeType;
     /**
      *
-     * @type {CompletedInfo}
+     * @type {number}
      * @memberof NodeOut
      */
-    completed: CompletedInfo | null;
+    completed: number | null;
     /**
      *
      * @type {number}

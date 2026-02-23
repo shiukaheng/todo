@@ -55,6 +55,24 @@ export interface ViewOut {
      * @memberof ViewOut
      */
     updatedAt: number | null;
+    /**
+     * 
+     * @type {Array<string>}
+     * @memberof ViewOut
+     */
+    includeRecursive: Array<string>;
+    /**
+     * 
+     * @type {Array<string>}
+     * @memberof ViewOut
+     */
+    excludeRecursive: Array<string>;
+    /**
+     * 
+     * @type {number}
+     * @memberof ViewOut
+     */
+    hideCompletedFor?: number | null;
 }
 
 /**
@@ -67,6 +85,8 @@ export function instanceOfViewOut(value: object): value is ViewOut {
     if (!('blacklist' in value) || value['blacklist'] === undefined) return false;
     if (!('createdAt' in value) || value['createdAt'] === undefined) return false;
     if (!('updatedAt' in value) || value['updatedAt'] === undefined) return false;
+    if (!('includeRecursive' in value) || value['includeRecursive'] === undefined) return false;
+    if (!('excludeRecursive' in value) || value['excludeRecursive'] === undefined) return false;
     return true;
 }
 
@@ -86,6 +106,9 @@ export function ViewOutFromJSONTyped(json: any, ignoreDiscriminator: boolean): V
         'blacklist': json['blacklist'],
         'createdAt': json['created_at'],
         'updatedAt': json['updated_at'],
+        'includeRecursive': json['include_recursive'],
+        'excludeRecursive': json['exclude_recursive'],
+        'hideCompletedFor': json['hide_completed_for'] == null ? undefined : json['hide_completed_for'],
     };
 }
 
@@ -106,6 +129,9 @@ export function ViewOutToJSONTyped(value?: ViewOut | null, ignoreDiscriminator: 
         'blacklist': value['blacklist'],
         'created_at': value['createdAt'],
         'updated_at': value['updatedAt'],
+        'include_recursive': value['includeRecursive'],
+        'exclude_recursive': value['excludeRecursive'],
+        'hide_completed_for': value['hideCompletedFor'],
     };
 }
 

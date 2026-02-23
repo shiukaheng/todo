@@ -13,6 +13,9 @@ Name | Type
 `blacklist` | Array&lt;string&gt;
 `createdAt` | number
 `updatedAt` | number
+`includeRecursive` | Array&lt;string&gt;
+`excludeRecursive` | Array&lt;string&gt;
+`hideCompletedFor` | number
 
 ## Example
 
@@ -27,6 +30,9 @@ const example = {
   "blacklist": null,
   "createdAt": null,
   "updatedAt": null,
+  "includeRecursive": null,
+  "excludeRecursive": null,
+  "hideCompletedFor": null,
 } satisfies ViewOut
 
 console.log(example)

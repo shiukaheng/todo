@@ -9,7 +9,6 @@
  * https://openapi-generator.tech
  * Do not edit the class manually.
  */
-import type { CompletedInfo } from './CompletedInfo';
 import type { NodeType } from './NodeType';
 /**
  * Create a node.
@@ -37,10 +36,10 @@ export interface CreateNodeOp {
     text?: string | null;
     /**
      *
-     * @type {CompletedInfo}
+     * @type {number}
      * @memberof CreateNodeOp
      */
-    completed?: CompletedInfo | null;
+    completed?: number | null;
     /**
      *
      * @type {NodeType}

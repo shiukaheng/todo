@@ -34,6 +34,30 @@ export interface ViewOut {
      * @type {Array<string>}
      * @memberof ViewOut
      */
+    whitelist: Array<string>;
+    /**
+     *
+     * @type {Array<string>}
+     * @memberof ViewOut
+     */
+    blacklist: Array<string>;
+    /**
+     *
+     * @type {number}
+     * @memberof ViewOut
+     */
+    createdAt: number | null;
+    /**
+     *
+     * @type {number}
+     * @memberof ViewOut
+     */
+    updatedAt: number | null;
+    /**
+     *
+     * @type {Array<string>}
+     * @memberof ViewOut
+     */
     includeRecursive: Array<string>;
     /**
      *
@@ -47,18 +71,6 @@ export interface ViewOut {
      * @memberof ViewOut
      */
     hideCompletedFor?: number | null;
-    /**
-     *
-     * @type {number}
-     * @memberof ViewOut
-     */
-    createdAt: number | null;
-    /**
-     *
-     * @type {number}
-     * @memberof ViewOut
-     */
-    updatedAt: number | null;
 }
 /**
  * Check if a given object implements the ViewOut interface.

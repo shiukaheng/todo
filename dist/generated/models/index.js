@@ -20,7 +20,6 @@ __exportStar(require("./AppState"), exports);
 __exportStar(require("./BatchOperationResult"), exports);
 __exportStar(require("./BatchRequest"), exports);
 __exportStar(require("./BatchResponse"), exports);
-__exportStar(require("./CompletedInfo"), exports);
 __exportStar(require("./CreateNodeOp"), exports);
 __exportStar(require("./CreatePlanOp"), exports);
 __exportStar(require("./DeleteNodeOp"), exports);

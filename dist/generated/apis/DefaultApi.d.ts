@@ -11,10 +11,10 @@
  */
 import * as runtime from '../runtime';
 import type { AppState, BatchRequest, BatchResponse, DisplayBatchRequest, NodeListOut, NodeOut, OperationResult, PlanListOut, PlanOut, ViewListOut, ViewOut, ViewPositionsIn, ViewPositionsOut } from '../models/index';
-export interface BatchOperationRequest {
+export interface BatchOperationsApiBatchPostRequest {
     batchRequest: BatchRequest;
 }
-export interface DisplayBatchOperationRequest {
+export interface DisplayBatchOperationsApiDisplayBatchPostRequest {
     displayBatchRequest: DisplayBatchRequest;
 }
 export interface GetPlanApiPlansPlanIdGetRequest {
@@ -41,22 +41,22 @@ export declare class DefaultApi extends runtime.BaseAPI {
      * Execute multiple operations atomically in a single transaction.
      * Batch Operations
      */
-    batchRaw(requestParameters: BatchOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BatchResponse>>;
+    batchOperationsApiBatchPostRaw(requestParameters: BatchOperationsApiBatchPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BatchResponse>>;
     /**
      * Execute multiple operations atomically in a single transaction.
      * Batch Operations
      */
-    batch(requestParameters: BatchOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BatchResponse>;
+    batchOperationsApiBatchPost(requestParameters: BatchOperationsApiBatchPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BatchResponse>;
     /**
      * Execute multiple display operations atomically in a single transaction.
      * Display Batch Operations
      */
-    displayBatchRaw(requestParameters: DisplayBatchOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BatchResponse>>;
+    displayBatchOperationsApiDisplayBatchPostRaw(requestParameters: DisplayBatchOperationsApiDisplayBatchPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BatchResponse>>;
     /**
      * Execute multiple display operations atomically in a single transaction.
      * Display Batch Operations
      */
-    displayBatch(requestParameters: DisplayBatchOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BatchResponse>;
+    displayBatchOperationsApiDisplayBatchPost(requestParameters: DisplayBatchOperationsApiDisplayBatchPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BatchResponse>;
     /**
      * Get a single plan with its steps.
      * Get Plan

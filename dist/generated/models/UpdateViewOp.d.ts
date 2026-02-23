@@ -32,19 +32,13 @@ export interface UpdateViewOp {
      * @type {Array<string>}
      * @memberof UpdateViewOp
      */
-    includeRecursive?: Array<string> | null;
+    whitelist?: Array<string> | null;
     /**
      *
      * @type {Array<string>}
      * @memberof UpdateViewOp
      */
-    excludeRecursive?: Array<string> | null;
-    /**
-     *
-     * @type {number}
-     * @memberof UpdateViewOp
-     */
-    hideCompletedFor?: number | null;
+    blacklist?: Array<string> | null;
 }
 /**
  * @export

@@ -18,7 +18,6 @@ exports.NodeOutFromJSON = NodeOutFromJSON;
 exports.NodeOutFromJSONTyped = NodeOutFromJSONTyped;
 exports.NodeOutToJSON = NodeOutToJSON;
 exports.NodeOutToJSONTyped = NodeOutToJSONTyped;
-const CompletedInfo_1 = require("./CompletedInfo");
 const NodeType_1 = require("./NodeType");
 /**
  * Check if a given object implements the NodeOut interface.
@@ -63,7 +62,7 @@ function NodeOutFromJSONTyped(json, ignoreDiscriminator) {
         'id': json['id'],
         'text': json['text'],
         'nodeType': (0, NodeType_1.NodeTypeFromJSON)(json['node_type']),
-        'completed': (0, CompletedInfo_1.CompletedInfoFromJSON)(json['completed']),
+        'completed': json['completed'],
         'due': json['due'],
         'createdAt': json['created_at'],
         'updatedAt': json['updated_at'],
@@ -86,7 +85,7 @@ function NodeOutToJSONTyped(value, ignoreDiscriminator = false) {
         'id': value['id'],
         'text': value['text'],
         'node_type': (0, NodeType_1.NodeTypeToJSON)(value['nodeType']),
-        'completed': (0, CompletedInfo_1.CompletedInfoToJSON)(value['completed']),
+        'completed': value['completed'],
         'due': value['due'],
         'created_at': value['createdAt'],
         'updated_at': value['updatedAt'],
