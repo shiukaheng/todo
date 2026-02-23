@@ -367,7 +367,7 @@ def _dispatch_operation(tx, op) -> None:
         raise ValueError(f"Unknown operation type: {type(op)}")
 
 
-@router.post("/batch", response_model=BatchResponse)
+@router.post("/batch", response_model=BatchResponse, operation_id="batch")
 async def batch_operations(req: BatchRequest):
     """Execute multiple operations atomically in a single transaction."""
     results: list[BatchOperationResult] = []
@@ -483,7 +483,7 @@ def _dispatch_display_operation(tx, op) -> None:
         raise ValueError(f"Unknown display operation type: {type(op)}")
 
 
-@router.post("/display/batch", response_model=BatchResponse)
+@router.post("/display/batch", response_model=BatchResponse, operation_id="display_batch")
 async def display_batch_operations(req: DisplayBatchRequest):
     """Execute multiple display operations atomically in a single transaction."""
     results: list[BatchOperationResult] = []
